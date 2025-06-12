@@ -59,7 +59,9 @@ const BlogPage = () => {
       content: `
         <h2>Introduction</h2>
         <p>The chemical manufacturing industry is undergoing a fundamental shift in supply chain management, driven by digital transformation, sustainability pressures, and the imperative for greater resilience. Traditional linear supply chains are giving way to interconnected, intelligent networks that leverage real-time data, automation, and predictive analytics. This evolution is not merely a response to recent disruptions—such as geopolitical tensions, pandemics, and climate-related events—but a strategic realignment toward efficiency, sustainability, and risk mitigation.</p>
-     
+
+        <p>This 2000-word analysis explores the key challenges, emerging solutions, and future trends shaping chemical supply chains in 2025 and beyond.</p>
+
         <h3>Current Market Challenges in Chemical Supply Chains</h3>
         <p>Chemical manufacturers face an increasingly volatile operating environment. Key challenges include:</p>
 
