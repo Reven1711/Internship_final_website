@@ -1,0 +1,246 @@
+.chatbot-button-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+}
+
+.chatbot-button {
+  background-color: #2563eb;
+  color: white;
+  border-radius: 9999px;
+  width: 4rem;
+  height: 4rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+}
+
+.chatbot-button:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+.chatbot-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.chatbot-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+}
+
+.chatbot-card {
+  width: 24rem;
+  height: 500px;
+  background-color: white;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 2px solid #bfdbfe;
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatbot-header {
+  background-color: #2563eb;
+  color: white;
+  padding: 1rem;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chatbot-header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chatbot-avatar {
+  width: 2rem;
+  height: 2rem;
+  background-color: #3b82f6;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatbot-avatar-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chatbot-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.chatbot-status {
+  font-size: 0.75rem;
+  color: #dbeafe;
+  margin: 0;
+}
+
+.chatbot-close-button {
+  background: none;
+  border: none;
+  color: white;
+  padding: 0.25rem;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+.chatbot-close-button:hover {
+  background-color: #3b82f6;
+}
+
+.chatbot-close-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chatbot-messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chatbot-message {
+  display: flex;
+  max-width: 80%;
+}
+
+.chatbot-message.bot {
+  align-self: flex-start;
+}
+
+.chatbot-message.user {
+  align-self: flex-end;
+}
+
+.chatbot-message-content {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.chatbot-message.bot .chatbot-message-content {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.chatbot-message.user .chatbot-message-content {
+  background-color: #2563eb;
+  color: white;
+}
+
+.chatbot-message-text {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.chatbot-quick-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.chatbot-quick-questions-title {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  margin: 0;
+}
+
+.chatbot-quick-question-button {
+  width: 100%;
+  text-align: left;
+  font-size: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.25rem;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chatbot-quick-question-button:hover {
+  background-color: #eff6ff;
+}
+
+.chatbot-input-container {
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.chatbot-input-wrapper {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chatbot-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chatbot-input:focus {
+  border-color: #3b82f6;
+}
+
+.chatbot-send-button {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.chatbot-send-button:hover {
+  background-color: #1d4ed8;
+}
+
+.chatbot-send-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Animation for the chat button */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.chatbot-button {
+  animation: pulse 2s infinite;
+} 

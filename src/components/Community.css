@@ -1,0 +1,167 @@
+.community {
+  padding: 4rem 2rem;
+  background-color: #f8fafc;
+}
+
+.community-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.community-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.community-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+}
+
+.community-subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.blog-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  color: inherit;
+  will-change: transform, box-shadow;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.blog-card-content {
+  padding: 1.5rem;
+}
+
+.blog-meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.blog-date,
+.blog-read-time {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.blog-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.blog-excerpt {
+  color: #666;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  opacity: 0.5;
+  transform: translateY(10px);
+}
+
+.blog-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #007bff;
+  font-weight: 500;
+  opacity: 0.5;
+  transform: translateY(10px);
+}
+
+.blog-link svg {
+  transition: transform 0.3s ease;
+}
+
+.community-cta {
+  text-align: center;
+}
+
+.view-all-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  text-decoration: none;
+}
+
+.view-all-button:hover {
+  background-color: #0056b3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .community {
+    padding: 3rem 1rem;
+  }
+
+  .community-title {
+    font-size: 2rem;
+  }
+
+  .community-subtitle {
+    font-size: 1.1rem;
+  }
+
+  .blog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .blog-card {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .blog-card,
+  .blog-excerpt,
+  .blog-link,
+  .blog-link svg {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* Animation Classes */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+} 

@@ -1,0 +1,55 @@
+
+@import './styles/PhoneDemo.css';
+@import './styles/ChatInterface.css';
+@import './styles/StepIndicator.css';
+
+.how-it-works {
+  padding: 4rem 2rem;
+  background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+}
+
+.how-it-works-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.how-it-works-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.how-it-works-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.how-it-works-subtitle {
+  font-size: 1.25rem;
+  color: #64748b;
+}
+
+.how-it-works-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .how-it-works-content {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .how-it-works {
+    padding: 2rem 1rem;
+  }
+
+  .how-it-works-title {
+    font-size: 2rem;
+  }
+}

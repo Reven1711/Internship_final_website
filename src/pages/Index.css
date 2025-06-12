@@ -1,0 +1,73 @@
+
+.index-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  /* Enable hardware acceleration for smooth animations */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+#community,
+#about,
+#contact {
+  scroll-margin-top: 80px;
+}
+
+/* GSAP Animation classes for performance */
+.animate-section {
+  /* Prepare for GSAP animations */
+  will-change: transform, opacity;
+}
+
+/* Mobile performance optimizations */
+@media (max-width: 768px) {
+  .index-page {
+    /* Reduce animation complexity on mobile */
+    transform: none;
+    perspective: none;
+  }
+  
+  .animate-section {
+    will-change: auto;
+  }
+}
+
+/* Smooth scrolling for the entire page */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Optimize images for animations */
+img {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Prepare buttons for hover animations */
+button {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Custom cursor for interactive elements */
+.blog-card,
+.value-card,
+button {
+  cursor: pointer;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .index-page,
+  .animate-section,
+  img,
+  button {
+    will-change: auto;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

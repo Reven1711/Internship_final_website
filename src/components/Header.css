@@ -1,0 +1,148 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0rem;
+}
+
+.logo-img {
+  height: 3.25rem;
+  width: 3.25rem;
+  object-fit: contain;
+  display: block;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  margin-left: -0.45rem;
+}
+
+.logo-o {
+  color: #00B8BD !important;
+}
+.logo-u {
+  color: #00B8BD !important;
+}
+.logo-r {
+  color: #2F6BFF !important;
+}
+.logo-c {
+  color: #2F6BFF !important;
+}
+.logo-e {
+  color: #1E3A8A !important;
+}
+.logo-a {
+  color: #1E3A8A !important;
+}
+.logo-s {
+  color: #FF7A1B !important;
+}
+.logo-y {
+  color: #FF7A1B !important;
+}
+
+.nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+}
+
+.nav-button {
+  color: #1d4ed8;
+  font-weight: 500;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nav-button:hover {
+  color: #1e3a8a;
+}
+
+.inquiry-button {
+  display: flex;
+  align-items: center;
+  background-color: #25D366;
+  color: white;
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.inquiry-button:hover {
+  background-color: #20B858;
+}
+
+.inquiry-button-icon {
+  margin-right: 0.5rem;
+  height: 1rem;
+  width: 1rem;
+}
+
+.mobile-menu {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .mobile-menu {
+    display: none;
+  }
+}
+
+.mobile-inquiry-button {
+  display: flex;
+  align-items: center;
+  background-color: #25D366;
+  color: white;
+  padding: 0.25rem;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mobile-inquiry-button:hover {
+  background-color: #20B858;
+}
+
+.mobile-inquiry-button-icon {
+  height: 1rem;
+  width: 1rem;
+} 
