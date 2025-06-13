@@ -1,6 +1,8 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
 import './Header.css';
+import ScrollTrigger from 'gsap/ScrollTrigger';
+import gsap from 'gsap';
 
 const Header = () => {
   const handleStartInquiry = () => {
@@ -8,9 +10,50 @@ const Header = () => {
   };
 
   const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+    const section = document.getElementById(sectionId);
+    if (section) {
+      // Get all sections
+      const allSections = gsap.utils.toArray('.animate-section');
+      const targetIndex = allSections.indexOf(section);
+      
+      // First, set all sections to initial state
+      allSections.forEach((section: any) => {
+        gsap.set(section, {
+          opacity: 0,
+          y: 30
+        });
+      });
+
+      // Scroll to the target section
+      section.scrollIntoView({ behavior: 'smooth' });
+
+      // Force animation to play immediately for all sections up to and including the target
+      requestAnimationFrame(() => {
+        gsap.to(section, {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          ease: "power3.out",
+          overwrite: true,
+          onComplete: () => {
+            // Refresh ScrollTrigger after animation completes
+            ScrollTrigger.refresh(true);
+          }
+        });
+
+        // Also animate any child elements that need it
+        const childElements = section.querySelectorAll('.section-title, .animate-element');
+        childElements.forEach((element: any) => {
+          gsap.to(element, {
+            opacity: 1,
+            y: 0,
+            duration: 0.6,
+            ease: "power3.out",
+            overwrite: true,
+            delay: 0.2
+          });
+        });
+      });
     }
   };
 

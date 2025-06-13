@@ -30,16 +30,87 @@ export class GSAPController {
       ignoreMobileResize: true
     });
 
+    // Initial setup
     this.setupScrollAnimations();
     this.setupMicroInteractions();
     this.initialized = true;
+
+    // Force initial refresh and play animations
+    ScrollTrigger.refresh(true);
+    this.playInitialAnimations();
+
+    // Add event listeners for various scroll scenarios
+    window.addEventListener('scrollend', () => {
+      ScrollTrigger.refresh(true);
+    });
+
+    window.addEventListener('resize', () => {
+      ScrollTrigger.refresh(true);
+    });
+
+    // Handle programmatic scrolling
+    const handleScroll = () => {
+      requestAnimationFrame(() => {
+        ScrollTrigger.refresh(true);
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+  }
+
+  private playInitialAnimations() {
+    // Get all sections
+    const sections = gsap.utils.toArray('.animate-section');
+    
+    // Find the first visible section
+    let firstVisibleIndex = -1;
+    sections.forEach((section: any, index: number) => {
+      const rect = section.getBoundingClientRect();
+      const isInView = (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= window.innerHeight &&
+        rect.right <= window.innerWidth
+      );
+
+      if (isInView && firstVisibleIndex === -1) {
+        firstVisibleIndex = index;
+      }
+    });
+
+    // Animate all sections up to and including the first visible one
+    sections.forEach((section: any, index: number) => {
+      if (index <= firstVisibleIndex) {
+        gsap.to(section, {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          ease: "power3.out",
+          overwrite: true,
+          delay: index * 0.1
+        });
+
+        // Animate child elements
+        const childElements = section.querySelectorAll('.section-title, .animate-element');
+        childElements.forEach((element: any) => {
+          gsap.to(element, {
+            opacity: 1,
+            y: 0,
+            duration: 0.6,
+            ease: "power3.out",
+            overwrite: true,
+            delay: (index * 0.1) + 0.2
+          });
+        });
+      }
+    });
   }
 
   private setupScrollAnimations() {
     // Hero section entrance
     this.animateHero();
     
-    // Section reveals
+    // Section reveals with improved trigger points
     this.animateSectionReveals();
     
     // Community cards stagger
@@ -118,48 +189,99 @@ export class GSAPController {
   }
 
   private animateSectionReveals() {
-    // Generic section reveal animation
+    // Generic section reveal animation with improved trigger points
     gsap.utils.toArray('.animate-section').forEach((section: any) => {
-      gsap.fromTo(section, 
-        {
-          opacity: 0,
-          y: 100
+      // Set initial state
+      gsap.set(section, {
+        opacity: 0,
+        y: 30
+      });
+
+      // Create the animation
+      ScrollTrigger.create({
+        trigger: section,
+        start: "top 90%",
+        end: "bottom 10%",
+        onEnter: () => {
+          // Get all sections up to and including this one
+          const allSections = gsap.utils.toArray('.animate-section');
+          const currentIndex = allSections.indexOf(section);
+          
+          // Animate all sections up to and including this one
+          allSections.forEach((s: any, index: number) => {
+            if (index <= currentIndex) {
+              gsap.to(s, {
+                opacity: 1,
+                y: 0,
+                duration: 0.8,
+                ease: "power3.out",
+                overwrite: true,
+                delay: index * 0.1
+              });
+
+              // Animate child elements
+              const childElements = s.querySelectorAll('.section-title, .animate-element');
+              childElements.forEach((element: any) => {
+                gsap.to(element, {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.6,
+                  ease: "power3.out",
+                  overwrite: true,
+                  delay: (index * 0.1) + 0.2
+                });
+              });
+            }
+          });
         },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 1.2,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: section,
-            start: "top 80%",
-            end: "bottom 20%",
-            toggleActions: "play none none reverse"
-          }
-        }
-      );
+        onLeaveBack: () => {
+          gsap.to(section, {
+            opacity: 0,
+            y: 30,
+            duration: 0.8,
+            ease: "power3.out",
+            overwrite: true
+          });
+        },
+        once: false
+      });
     });
 
     // Section titles with split animation
     gsap.utils.toArray('.section-title').forEach((title: any) => {
-      gsap.fromTo(title,
-        {
-          opacity: 0,
-          y: 50,
-          skewY: 7
+      // Set initial state
+      gsap.set(title, {
+        opacity: 0,
+        y: 20,
+        skewY: 3
+      });
+
+      // Create the animation
+      ScrollTrigger.create({
+        trigger: title,
+        start: "top 90%",
+        onEnter: () => {
+          gsap.to(title, {
+            opacity: 1,
+            y: 0,
+            skewY: 0,
+            duration: 0.6,
+            ease: "power3.out",
+            overwrite: true
+          });
         },
-        {
-          opacity: 1,
-          y: 0,
-          skewY: 0,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: title,
-            start: "top 85%"
-          }
-        }
-      );
+        onLeaveBack: () => {
+          gsap.to(title, {
+            opacity: 0,
+            y: 20,
+            skewY: 3,
+            duration: 0.6,
+            ease: "power3.out",
+            overwrite: true
+          });
+        },
+        once: false
+      });
     });
   }
 
