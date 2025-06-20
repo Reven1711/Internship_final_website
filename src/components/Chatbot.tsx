@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import './Chatbot.css';
@@ -31,46 +32,56 @@ const Chatbot = () => {
     "default": "That's a great question! For detailed information, I'd recommend connecting with our team on WhatsApp. They can provide specific guidance based on your needs. Would you like me to connect you?"
   };
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const generateBotResponse = (userText: string) => {
+    const lowerInput = userText.toLowerCase();
+    let response = botResponses.default;
+    
+    for (const [key, value] of Object.entries(botResponses)) {
+      if (key !== 'default' && lowerInput.includes(key)) {
+        response = value;
+        break;
+      }
+    }
 
+    return response;
+  };
+
+  const addMessage = (text: string, isBot: boolean) => {
     const newMessage = {
-      id: messages.length + 1,
-      text: inputValue,
-      isBot: false,
+      id: Date.now() + Math.random(),
+      text,
+      isBot,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, newMessage]);
+    return newMessage;
+  };
 
-    // Generate bot response
+  const handleSendMessage = () => {
+    if (!inputValue.trim()) return;
+
+    // Add user message
+    addMessage(inputValue, false);
+
+    // Generate and add bot response
     setTimeout(() => {
-      const lowerInput = inputValue.toLowerCase();
-      let response = botResponses.default;
-      
-      for (const [key, value] of Object.entries(botResponses)) {
-        if (key !== 'default' && lowerInput.includes(key)) {
-          response = value;
-          break;
-        }
-      }
-
-      const botResponse = {
-        id: messages.length + 2,
-        text: response,
-        isBot: true,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, botResponse]);
+      const response = generateBotResponse(inputValue);
+      addMessage(response, true);
     }, 1000);
 
     setInputValue('');
   };
 
   const handleQuickQuestion = (question: string) => {
-    setInputValue(question);
-    handleSendMessage();
+    // Add user message immediately
+    addMessage(question, false);
+
+    // Generate and add bot response
+    setTimeout(() => {
+      const response = generateBotResponse(question);
+      addMessage(response, true);
+    }, 1000);
   };
 
   if (!isOpen) {
@@ -121,7 +132,7 @@ const Chatbot = () => {
             </div>
           ))}
 
-          {/* Quick Questions */}
+          {/* Quick Questions - show only after initial message */}
           {messages.length === 1 && (
             <div className="chatbot-quick-questions">
               <p className="chatbot-quick-questions-title">Quick questions:</p>

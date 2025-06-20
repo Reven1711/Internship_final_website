@@ -12,7 +12,7 @@ const About = () => {
       description: "All suppliers are GST-verified and undergo rigorous quality checks to ensure reliable partnerships."
     },
     {
-      icon: Globe,
+      icon: TrendingUp,
       title: "Industry Expertise",
       description: "Deep understanding of chemical industry requirements, regulations, and market dynamics."
     },
@@ -65,7 +65,7 @@ const About = () => {
               <h3 className="about-text-title">Your Trusted Chemical Sourcing Partner</h3>
               <div className="about-text-content">
                 <p>
-                  At Sourceasy, we understand the complexities of chemical procurement. Our platform connects you with verified suppliers, 
+                  At Sourceasy by Lets Talk Business Pvt Ltd, we understand the complexities of chemical procurement. Our platform connects you with verified suppliers, 
                   ensuring quality, reliability, and competitive pricing for all your chemical needs.
                 </p>
                 <p>

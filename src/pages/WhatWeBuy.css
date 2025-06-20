@@ -1,0 +1,46 @@
+.what-we-buy-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.what-we-buy-content {
+  background: white;
+  padding: 3rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+}
+
+.what-we-buy-content h1 {
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.what-we-buy-content p {
+  color: #64748b;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .what-we-buy-container {
+    padding: 1rem;
+  }
+  
+  .what-we-buy-content {
+    padding: 2rem;
+  }
+  
+  .what-we-buy-content h1 {
+    font-size: 2rem;
+  }
+} 

@@ -18,8 +18,6 @@ export class GSAPController {
   init() {
     if (this.initialized) return;
 
-    console.log('GSAPController: Initializing...');
-
     // Set GSAP defaults for premium feel
     gsap.defaults({
       duration: 1.2,
@@ -29,8 +27,7 @@ export class GSAPController {
     // Configure ScrollTrigger for mobile optimization
     ScrollTrigger.config({
       limitCallbacks: true,
-      ignoreMobileResize: true,
-      autoRefreshEvents: "visibilitychange,DOMContentLoaded,load,resize"
+      ignoreMobileResize: true
     });
 
     // Initial setup
@@ -516,36 +513,20 @@ export class GSAPController {
     // Add hover animations for value cards
     const valueCards = document.querySelectorAll('.value-card');
     valueCards.forEach(card => {
-      const icon = card.querySelector('.value-icon');
       card.addEventListener('mouseenter', () => {
         gsap.to(card, {
           y: 20,
           duration: 0.3,
           ease: "power2.out"
         });
-        if (icon) {
-          gsap.to(icon, {
-            scale: 1.1,
-            rotation: 5,
-            duration: 0.3,
-            ease: "back.out(1.7)"
-          });
-        }
       });
+
       card.addEventListener('mouseleave', () => {
         gsap.to(card, {
           y: 0,
           duration: 0.3,
           ease: "power2.out"
         });
-        if (icon) {
-          gsap.to(icon, {
-            scale: 1,
-            rotation: 0,
-            duration: 0.3,
-            ease: "back.out(1.7)"
-          });
-        }
       });
     });
 
@@ -704,14 +685,12 @@ export class GSAPController {
   }
 
   destroy() {
-    console.log('GSAPController: Destroying...');
     ScrollTrigger.getAll().forEach(trigger => trigger.kill());
     gsap.killTweensOf("*");
     this.initialized = false;
   }
 
   refresh() {
-    console.log('GSAPController: Refreshing...');
     ScrollTrigger.refresh();
   }
 }

@@ -22,6 +22,62 @@
   will-change: transform, opacity;
 }
 
+/* Back to top button styling */
+.scroll-up-btn-container {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem; /* Changed from left to right for better visibility */
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.scroll-up-btn-container.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-up-btn-container.hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+.scroll-up-btn {
+  background-color: #1f2937;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 3.5rem; /* Slightly larger for better visibility */
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  opacity: 0.9;
+}
+
+.scroll-up-btn:hover {
+  background-color: #374151;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  opacity: 1;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .scroll-up-btn-container {
+    right: 1.5rem;
+    bottom: 1.5rem;
+  }
+  
+  .scroll-up-btn {
+    width: 3rem;
+    height: 3rem;
+  }
+}
+
 /* Mobile performance optimizations */
 @media (max-width: 768px) {
   .index-page {

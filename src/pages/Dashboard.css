@@ -1,0 +1,44 @@
+.dashboard-container {
+  min-height: 100vh;
+  position: relative;
+}
+
+.back-to-top {
+  position: fixed;
+  left: 2rem;
+  bottom: 2rem;
+  width: 3rem;
+  height: 3rem;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.back-to-top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+}
+
+@media (max-width: 768px) {
+  .back-to-top {
+    display: none;
+  }
+} 

@@ -4,6 +4,7 @@ import { ArrowRight, Calendar, Clock } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './AllArticles.css';
+import { motion } from 'framer-motion';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -183,59 +184,66 @@ const AllArticles = () => {
   }, [filteredArticles]);
 
   return (
-    <div className="articles-page">
-      <div className="articles-container">
-        <div className="articles-header">
-          <h1>Latest Articles & Insights</h1>
-          <p>Stay informed with the latest trends, innovations, and developments in the chemical industry</p>
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -30 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="articles-page">
+        <div className="articles-container">
+          <div className="articles-header">
+            <h1>Latest Articles & Insights</h1>
+            <p>Stay informed with the latest trends, innovations, and developments in the chemical industry</p>
+          </div>
 
-        <div className="category-filters">
-          {categories.map(category => (
-            <button
-              key={category}
-              className={`filter-btn${selectedCategory === category ? ' active' : ''}`}
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+          <div className="category-filters">
+            {categories.map(category => (
+              <button
+                key={category}
+                className={`filter-btn${selectedCategory === category ? ' active' : ''}`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
 
-        <div className="articles-grid">
-          {filteredArticles.map((article) => (
-            <Link 
-              to={`/blog/${article.id}`} 
-              key={article.id} 
-              className="article-card"
-            >
-              <div className="article-image-container">
-                <img src={article.image} alt={article.title} className="article-image" />
-                <span className="article-category">{article.category}</span>
-              </div>
-              <div className="article-content">
-                <div className="article-meta">
-                  <span className="article-date">
-                    <Calendar size={14} />
-                    {article.date}
-                  </span>
-                  <span className="article-read-time">
-                    <Clock size={14} />
-                    {article.readTime}
-                  </span>
+          <div className="articles-grid">
+            {filteredArticles.map((article) => (
+              <Link 
+                to={`/blog/${article.id}`} 
+                key={article.id} 
+                className="article-card"
+              >
+                <div className="article-image-container">
+                  <img src={article.image} alt={article.title} className="article-image" />
+                  <span className="article-category">{article.category}</span>
                 </div>
-                <h2 className="article-title">{article.title}</h2>
-                <p className="article-excerpt">{article.excerpt}</p>
-                <div className="read-more">
-                  Read Article
-                  <ArrowRight size={16} />
+                <div className="article-content">
+                  <div className="article-meta">
+                    <span className="article-date">
+                      <Calendar size={14} />
+                      {article.date}
+                    </span>
+                    <span className="article-read-time">
+                      <Clock size={14} />
+                      {article.readTime}
+                    </span>
+                  </div>
+                  <h2 className="article-title">{article.title}</h2>
+                  <p className="article-excerpt">{article.excerpt}</p>
+                  <div className="read-more">
+                    Read Article
+                    <ArrowRight size={16} />
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

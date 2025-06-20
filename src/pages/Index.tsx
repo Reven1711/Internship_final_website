@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
 import AIAgent from '../components/AIAgent';
@@ -9,93 +9,43 @@ import Contact from '../components/Contact';
 import Chatbot from '../components/Chatbot';
 import { useGSAP } from '../hooks/useGSAP';
 import { ArrowUp } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './Index.css';
-import gsap from 'gsap';
+import { motion } from 'framer-motion';
+import { useIsMobile } from '../hooks/use-mobile';
 
-const Index = () => {
-  useGSAP();
-  const [showScrollUp, setShowScrollUp] = useState(false);
+interface IndexProps {
+  user: any;
+  onLoginClick: () => void;
+  onLogout: () => void;
+}
+
+const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
+  const [componentsLoaded, setComponentsLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+
+  const { refresh } = useGSAP();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Initialize animations
-    const initializeAnimations = () => {
-      // Force initial state
-      gsap.utils.toArray('.animate-section').forEach((section: any) => {
-        gsap.set(section, {
-          opacity: 0,
-          y: 30
-        });
-      });
+    console.log('Index: Components mounting...');
+    const sections = document.querySelectorAll('.animate-section');
+    sections.forEach(section => {
+      (section as HTMLElement).style.opacity = '1';
+      (section as HTMLElement).style.transform = 'translateY(0)';
+    });
 
-      // Force initial animations for visible sections
-      const visibleSections = gsap.utils.toArray('.animate-section').filter((section: any) => {
-        const rect = section.getBoundingClientRect();
-        return (
-          rect.top >= 0 &&
-          rect.left >= 0 &&
-          rect.bottom <= window.innerHeight &&
-          rect.right <= window.innerWidth
-        );
-      });
+    const timer = setTimeout(() => {
+      setComponentsLoaded(true);
+      console.log('Index: Components loaded, initializing animations...');
+    }, 50);
 
-      visibleSections.forEach((section: any) => {
-        gsap.to(section, {
-          opacity: 1,
-          y: 0,
-          duration: 0.8,
-          ease: "power3.out",
-          overwrite: true
-        });
-
-        // Animate child elements
-        const childElements = section.querySelectorAll('.section-title, .animate-element');
-        childElements.forEach((element: any) => {
-          gsap.to(element, {
-            opacity: 1,
-            y: 0,
-            duration: 0.6,
-            ease: "power3.out",
-            overwrite: true,
-            delay: 0.2
-          });
-        });
-      });
-
-      ScrollTrigger.refresh(true);
-    };
-
-    // Initial setup
-    initializeAnimations();
-
-    // Handle scroll events
-    const handleScroll = () => {
-      setShowScrollUp(window.scrollY > 200);
-      requestAnimationFrame(() => {
-        ScrollTrigger.refresh(true);
-      });
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', () => ScrollTrigger.refresh(true));
-    window.addEventListener('load', initializeAnimations);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', () => ScrollTrigger.refresh(true));
-      window.removeEventListener('load', initializeAnimations);
-      // Cleanup ScrollTrigger instances
-      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
-    };
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    // Handle keyboard navigation
-    const handleKeydown = (e: KeyboardEvent) => {
-      const keys = [
-        'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ' // space
-      ];
+    const handleKeydown = (e) => {
+      const keys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
       if (keys.includes(e.key)) {
         setTimeout(() => {
           ScrollTrigger.refresh();
@@ -108,44 +58,85 @@ const Index = () => {
   }, []);
 
   const handleScrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    requestAnimationFrame(() => {
-      ScrollTrigger.refresh(true);
-    });
+    console.log('Refreshing page'); // Debug log
+    window.location.reload(); // Refresh the page
   };
+
+  useEffect(() => {
+    const toggleVisibility = () => {
+      const scrollY = window.scrollY;
+      const shouldBeVisible = scrollY > 600;
+      console.log(`Scroll position: ${scrollY}px, isVisible: ${shouldBeVisible}`);
+      setIsVisible(shouldBeVisible);
+    };
+
+    window.addEventListener('scroll', toggleVisibility);
+    toggleVisibility();
+    return () => window.removeEventListener('scroll', toggleVisibility);
+  }, []);
+
+  const PageWrapper = isMobile ? 'div' : motion.div;
 
   return (
     <>
-      <div className="index-page">
-        <Header />
+      <PageWrapper
+        {...(!isMobile && {
+          initial: { opacity: 0, y: 30 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -30 },
+          transition: { duration: 0.5 },
+        })}
+        className="index-page"
+      >
+        <Header user={user} onLoginClick={onLoginClick} onLogout={onLogout} />
         <Hero />
-        <div className="animate-section">
+        <div className="animate-section" style={{ opacity: 1, transform: 'translateY(0)' }}>
           <AIAgent />
         </div>
-        <div className="animate-section" id="how-it-works">
+        <div className="animate-section" id="how-it-works" style={{ opacity: 1, transform: 'translateY(0)' }}>
           <HowItWorks />
         </div>
-        <div id="community" className="animate-section">
+        <div id="community" className="animate-section" style={{ opacity: 1, transform: 'translateY(0)' }}>
           <Community />
         </div>
-        <div id="about" className="animate-section">
+        <div id="about" className="animate-section" style={{ opacity: 1, transform: 'translateY(0)' }}>
           <About />
         </div>
-        <div id="contact" className="animate-section">
+        <div id="contact" className="animate-section" style={{ opacity: 1, transform: 'translateY(0)' }}>
           <Contact />
         </div>
-      </div>
+      </PageWrapper>
       <Chatbot />
-      {showScrollUp && (
-        <div className="scroll-up-btn-container">
-          <button
-            className="scroll-up-btn"
-            onClick={handleScrollToTop}
-            aria-label="Scroll to top"
-          >
-            <ArrowUp size={28} />
-          </button>
-        </div>
+      
+      {/* Remove the back to top button on mobile devices */}
+      {!isMobile && (
+        <motion.button
+          className="scroll-up-btn"
+          onClick={handleScrollToTop}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.3 }}
+          style={{
+            position: 'fixed',
+            bottom: '2rem',
+            left: '2rem',
+            background: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '3.5rem',
+            height: '3.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            zIndex: 10000,
+          }}
+        >
+          <ArrowUp size={24} />
+        </motion.button>
       )}
     </>
   );

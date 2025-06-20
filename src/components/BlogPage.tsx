@@ -1,9 +1,12 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import './BlogPage.css';
+import { motion } from 'framer-motion';
+import { useIsMobile } from '../hooks/use-mobile';
 
 const BlogPage = () => {
   const { id } = useParams();
+  const isMobile = useIsMobile();
 
   const blogContent = {
     'chemical-industry-trends': {
@@ -371,7 +374,17 @@ const BlogPage = () => {
     return <div className="blog-not-found">Blog not found</div>;
   }
 
+  const PageWrapper = isMobile ? 'div' : motion.div;
+
   return (
+    <PageWrapper
+      {...(!isMobile && {
+        initial: { opacity: 0, y: 30 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -30 },
+        transition: { duration: 0.5 },
+      })}
+    >
     <div className="blog-page">
       <div className="blog-header">
         <h1 className="blog-title">{blog.title}</h1>
@@ -387,6 +400,7 @@ const BlogPage = () => {
 
       <div className="blog-content" dangerouslySetInnerHTML={{ __html: blog.content }} />
     </div>
+    </PageWrapper>
   );
 };
 

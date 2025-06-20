@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 # Dependencies
+=======
+# dependencies
+>>>>>>> 4a3babaaf734d9bcfde62ea47b67c30b863ddec6
 /node_modules
 /.pnp
 .pnp.js
 
+<<<<<<< HEAD
 # Testing
 /coverage
 
@@ -12,12 +17,27 @@
 
 # Misc
 .DS_Store
+=======
+# testing
+/coverage
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+.env
+>>>>>>> 4a3babaaf734d9bcfde62ea47b67c30b863ddec6
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
+<<<<<<< HEAD
 # Logs
+=======
+>>>>>>> 4a3babaaf734d9bcfde62ea47b67c30b863ddec6
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -26,6 +46,7 @@ yarn-error.log*
 .idea/
 .vscode/
 *.swp
+<<<<<<< HEAD
 *.swo
 
 # Environment variables
@@ -45,3 +66,6 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+=======
+*.swo 
+>>>>>>> 4a3babaaf734d9bcfde62ea47b67c30b863ddec6

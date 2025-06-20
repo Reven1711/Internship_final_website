@@ -1,0 +1,138 @@
+
+.dashboard-navbar {
+    background: white;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  
+  .navbar-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .brand-logo {
+    height: 2.5rem;
+    width: 2.5rem;
+    object-fit: contain;
+  }
+  
+  .brand-text {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #6ED6F7, #3A8DCA 50%, #174A7C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .navbar-nav {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(248, 250, 252, 0.8);
+    padding: 0.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+  
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: none;
+    color: #64748b;
+    font-weight: 500;
+    font-size: 0.95rem;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+  
+  .nav-item:hover {
+    color: #1e293b;
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .nav-item.active {
+    color: white;
+    background: linear-gradient(135deg, #3A8DCA, #174A7C);
+    box-shadow: 0 4px 12px rgba(58, 141, 202, 0.3);
+  }
+  
+  .nav-item.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(58, 141, 202, 0.4);
+  }
+  
+  .nav-item.logout-btn {
+    color: #ef4444;
+    margin-left: 0.5rem;
+    padding-left: 1.5rem;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  .nav-item.logout-btn:hover {
+    color: white;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+  
+  .nav-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  
+  @media (max-width: 768px) {
+    .navbar-container {
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+    }
+  
+    .navbar-nav {
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  
+    .nav-item {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+    }
+  
+    .brand-text {
+      font-size: 1.25rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .nav-item span {
+      display: none;
+    }
+    
+    .nav-item {
+      padding: 0.75rem;
+    }
+    
+    .navbar-nav {
+      gap: 0.25rem;
+    }
+  }

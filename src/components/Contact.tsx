@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageCircle, Mail, Phone, MapPin } from 'lucide-react';
+import { MessageCircle, Mail, Phone, MapPin, Instagram, Linkedin, Facebook } from 'lucide-react';
 import './Contact.css';
 
 const Contact = () => {
@@ -65,6 +65,15 @@ const Contact = () => {
 
   const handleWhatsApp = () => {
     window.open('https://wa.me/14155238886?text=Hello%20Sourceasy,%20I%20have%20a%20question', '_blank');
+  };
+
+  const handleSocialClick = (platform: string) => {
+    const socialLinks = {
+      instagram: 'https://www.instagram.com/sourceasy1/',
+      linkedin: 'https://www.linkedin.com/in/sourceasy-1-95400a370/',
+      facebook: 'https://www.facebook.com/profile.php?id=61577305686072'
+    };
+    window.open(socialLinks[platform as keyof typeof socialLinks], '_blank');
   };
 
   return (
@@ -179,6 +188,40 @@ const Contact = () => {
                   {isSubmitting ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
+
+              {/* Social Media Section */}
+              <div className="social-media-card">
+                <h4 className="social-title">Follow Us</h4>
+                <p className="social-description">
+                  Stay connected with us on social media for updates and industry insights
+                </p>
+                <div className="social-links">
+                  <button 
+                    onClick={() => handleSocialClick('instagram')}
+                    className="social-button"
+                    aria-label="Follow us on Instagram"
+                  >
+                    <Instagram className="social-icon" />
+                    <span>Instagram</span>
+                  </button>
+                  <button 
+                    onClick={() => handleSocialClick('linkedin')}
+                    className="social-button"
+                    aria-label="Follow us on LinkedIn"
+                  >
+                    <Linkedin className="social-icon" />
+                    <span>LinkedIn</span>
+                  </button>
+                  <button 
+                    onClick={() => handleSocialClick('facebook')}
+                    className="social-button"
+                    aria-label="Follow us on Facebook"
+                  >
+                    <Facebook className="social-icon" />
+                    <span>Facebook</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Contact Information */}

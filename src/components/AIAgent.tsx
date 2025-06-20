@@ -7,7 +7,7 @@ const AIAgent = () => {
   const [isTyping, setIsTyping] = useState(true);
   const [wordIndex, setWordIndex] = useState(0);
   
-  const words = ['Smarter', 'AI'];
+  const words = ['Smarter', 'AI Driven'];
 
   useEffect(() => {
     const currentWord = words[wordIndex];

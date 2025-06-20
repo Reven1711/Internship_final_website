@@ -49,5 +49,6 @@
 
   .phone-screen {
     height: 34rem;
+    overflow: hidden;
   }
 }
