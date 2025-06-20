@@ -19,6 +19,8 @@ import AboutPage from './pages/AboutPage';
 import WhatWeBuy from './pages/WhatWeBuy';
 import WhatWeSell from './pages/WhatWeSell';
 import Profile from './pages/Profile';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfUse from './pages/TermsOfUse';
 import Footer from './components/Footer';
 
 // Function to check if email exists in Pinecone database
@@ -86,6 +88,8 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
                   <Route path="/dashboard/about" element={<AboutPage user={user} />} />
                   <Route path="/dashboard/what-we-buy" element={<WhatWeBuy user={user} />} />
                   <Route path="/dashboard/what-we-sell" element={<WhatWeSell user={user} />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-of-use" element={<TermsOfUse />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </AnimatePresence>
@@ -104,6 +108,8 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
                   <Route path="/" element={<Index onLoginClick={onLoginClick} user={user} onLogout={handleLogoutWithNavigation} />} />
                   <Route path="/blog/:id" element={<BlogPage />} />
                   <Route path="/articles" element={<AllArticles />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-of-use" element={<TermsOfUse />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </AnimatePresence>

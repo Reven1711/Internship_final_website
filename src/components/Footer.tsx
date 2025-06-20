@@ -1,15 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Footer.css';
 
 const Footer: React.FC = () => {
+  const navigate = useNavigate();
+
   const handlePrivacyClick = () => {
-    // TODO: Implement privacy policy page navigation
-    console.log('Privacy Policy clicked');
+    navigate('/privacy-policy');
+    window.scrollTo(0, 0);
   };
 
   const handleTermsClick = () => {
-    // TODO: Implement terms of service page navigation
-    console.log('Terms of Service clicked');
+    navigate('/terms-of-use');
+    window.scrollTo(0, 0);
   };
 
   return (
