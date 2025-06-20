@@ -19,6 +19,7 @@ import AboutPage from './pages/AboutPage';
 import WhatWeBuy from './pages/WhatWeBuy';
 import WhatWeSell from './pages/WhatWeSell';
 import Profile from './pages/Profile';
+import Footer from './components/Footer';
 
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
@@ -76,31 +77,39 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
         // Logged in user - show dashboard navbar and routes
         <>
           <DashboardNavbar user={user} onLogout={handleLogoutWithNavigation} />
-          <div style={{ paddingTop: '4.5rem' }}>
-            <AnimatePresence mode="wait">
-              <Routes location={location} key={location.pathname}>
-                <Route path="/dashboard" element={<Dashboard user={user} onLogout={handleLogoutWithNavigation} />} />
-                <Route path="/dashboard/profile" element={<Profile user={user} />} />
-                <Route path="/dashboard/about" element={<AboutPage user={user} />} />
-                <Route path="/dashboard/what-we-buy" element={<WhatWeBuy user={user} />} />
-                <Route path="/dashboard/what-we-sell" element={<WhatWeSell user={user} />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-            </AnimatePresence>
+          <div style={{ paddingTop: '4.5rem', minHeight: 'calc(100vh - 4.5rem)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1 }}>
+              <AnimatePresence mode="wait">
+                <Routes location={location} key={location.pathname}>
+                  <Route path="/dashboard" element={<Dashboard user={user} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/dashboard/profile" element={<Profile user={user} />} />
+                  <Route path="/dashboard/about" element={<AboutPage user={user} />} />
+                  <Route path="/dashboard/what-we-buy" element={<WhatWeBuy user={user} />} />
+                  <Route path="/dashboard/what-we-sell" element={<WhatWeSell user={user} />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </AnimatePresence>
+            </div>
+            <Footer />
           </div>
         </>
       ) : (
         // Not logged in - show original header and routes
         <>
           <Header user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />
-          <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<Index onLoginClick={onLoginClick} user={user} onLogout={handleLogoutWithNavigation} />} />
-              <Route path="/blog/:id" element={<BlogPage />} />
-              <Route path="/articles" element={<AllArticles />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnimatePresence>
+          <div style={{ minHeight: 'calc(100vh - 4.5rem)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1 }}>
+              <AnimatePresence mode="wait">
+                <Routes location={location} key={location.pathname}>
+                  <Route path="/" element={<Index onLoginClick={onLoginClick} user={user} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/blog/:id" element={<BlogPage />} />
+                  <Route path="/articles" element={<AllArticles />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AnimatePresence>
+            </div>
+            <Footer />
+          </div>
         </>
       )}
       {/* Login Modal */}
