@@ -265,6 +265,11 @@ app.get("/api/buy-products/:email", async (req, res) => {
   }
 });
 
+// Helper to normalize product names
+function normalizeName(name) {
+  return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 // Add a product to user's buy list
 app.post("/api/buy-products/add", async (req, res) => {
   try {
@@ -320,8 +325,20 @@ app.post("/api/buy-products/add", async (req, res) => {
       console.log("No existing record found, will create new one");
     }
 
-    // Check if product already exists
-    if (existingProducts.includes(productName)) {
+    // Check if product already exists (case-insensitive, normalized)
+    const normalizedNew = normalizeName(productName);
+    const productExists = existingProducts.some((existingProduct) => {
+      const normalizedExisting = normalizeName(existingProduct);
+      const match = normalizedExisting === normalizedNew;
+      console.log(
+        `Comparing "${normalizedExisting}" with "${normalizedNew}" -> ${match}`
+      );
+      return match;
+    });
+
+    console.log("Product exists:", productExists);
+
+    if (productExists) {
       return res.status(400).json({
         error: "Product already exists in your list",
       });

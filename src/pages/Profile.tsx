@@ -49,6 +49,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newProductName, setNewProductName] = useState('');
   const [addingProduct, setAddingProduct] = useState(false);
+  const [addProductError, setAddProductError] = useState('');
+  const [addProductWarning, setAddProductWarning] = useState('');
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -159,6 +161,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   ];
 
+  // Helper to normalize product names
+  function normalizeName(name: string) {
+    return name.trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
   // Fetch user's buy products from Pinecone
   const fetchBuyProducts = async () => {
     if (!user?.email) return;
@@ -260,9 +267,23 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       return;
     }
 
+    // Check for duplicates on the client side first (normalized)
+    const trimmedProductName = newProductName.trim();
+    const normalizedNew = normalizeName(trimmedProductName);
+    const productExists = buyProducts.some(existingProduct => 
+      normalizeName(existingProduct) === normalizedNew
+    );
+
+    if (productExists) {
+      setAddProductError("Product already exists in your list");
+      return;
+    }
+
     try {
       setAddingProduct(true);
-      console.log("Making API call to add product:", { email: user.email, productName: newProductName.trim() });
+      setAddProductError(''); // Clear any previous errors
+      setAddProductWarning('');
+      console.log("Making API call to add product:", { email: user.email, productName: trimmedProductName });
       
       const response = await fetch('/api/buy-products/add', {
         method: 'POST',
@@ -271,7 +292,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         },
         body: JSON.stringify({ 
           email: user.email, 
-          productName: newProductName.trim() 
+          productName: trimmedProductName 
         }),
       });
 
@@ -283,15 +304,17 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         console.log("Add product success data:", data);
         setBuyProducts(data.products);
         setNewProductName('');
+        setAddProductError('');
+        setAddProductWarning('');
         setShowAddModal(false);
       } else {
         const errorData = await response.json();
         console.error("Add product error:", errorData);
-        alert(errorData.error || 'Failed to add product');
+        setAddProductError(errorData.error || 'Failed to add product');
       }
     } catch (error) {
       console.error('Error adding product:', error);
-      alert('Failed to add product');
+      setAddProductError('Failed to add product');
     } finally {
       setAddingProduct(false);
     }
@@ -692,7 +715,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 />
                 <button 
                   className="add-product-btn"
-                  onClick={() => setShowAddModal(true)}
+                  onClick={() => {
+                    setShowAddModal(true);
+                    setAddProductError('');
+                    setAddProductWarning('');
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1337,7 +1364,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <h3>Add New Product</h3>
               <button 
                 className="modal-close-btn"
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setAddProductError('');
+                  setAddProductWarning('');
+                }}
               >
                 <X size={20} />
               </button>
@@ -1348,27 +1379,57 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 id="productName"
                 type="text"
                 value={newProductName}
-                onChange={(e) => setNewProductName(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setNewProductName(value);
+                  
+                  if (addProductError) setAddProductError('');
+                  if (addProductWarning) setAddProductWarning('');
+                  
+                  // Check for duplicates in real-time (normalized)
+                  const trimmedValue = value.trim();
+                  const normalizedNew = normalizeName(trimmedValue);
+                  if (
+                    trimmedValue &&
+                    buyProducts.some(existingProduct => normalizeName(existingProduct) === normalizedNew)
+                  ) {
+                    setAddProductWarning("This product already exists in your list");
+                  }
+                }}
                 placeholder="Enter chemical name (e.g., Acetic Acid)"
-                className="modal-input"
+                className={`modal-input ${addProductError || addProductWarning ? 'error' : ''}`}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     handleAddProduct();
                   }
                 }}
               />
+              {addProductError && (
+                <div className="error-message">
+                  {addProductError}
+                </div>
+              )}
+              {addProductWarning && (
+                <div className="warning-message">
+                  {addProductWarning}
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button 
                 className="modal-cancel-btn"
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setAddProductError('');
+                  setAddProductWarning('');
+                }}
               >
                 Cancel
               </button>
               <button 
                 className="modal-submit-btn"
                 onClick={handleAddProduct}
-                disabled={!newProductName.trim() || addingProduct}
+                disabled={!newProductName.trim() || addingProduct || !!addProductError || !!addProductWarning}
               >
                 {addingProduct ? 'Adding...' : 'Add Product'}
               </button>
