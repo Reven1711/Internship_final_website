@@ -194,7 +194,7 @@
 /* Sell Products */
 .sell-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
 }
 
@@ -767,4 +767,18 @@
     min-width: 120px;
     padding: 0.5rem !important;
   }
+}
+
+/* Chevron icons styling */
+.sell-item-card .chevron-icon {
+  transition: color 0.2s ease;
+}
+
+.sell-item-card:hover .chevron-icon {
+  color: #174A7C !important;
+}
+
+/* Buy item remove button hover effect */
+.buy-item button:hover {
+  background-color: #fef2f2 !important;
 }

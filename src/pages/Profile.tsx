@@ -1,6 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Phone, Pin, Building2, Edit, ChevronDown, ChevronUp, Plus, X, FileText, DollarSign, Download, Share2 } from 'lucide-react';
+import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Phone, Pin, Building2, Edit, ChevronDown, ChevronUp, Plus, X, FileText, Download, Share2 } from 'lucide-react';
 import './Profile.css';
+
+// Rupee symbol component
+const RupeeIcon = ({ size = 16, className = "" }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M6 3h12" />
+    <path d="M6 8h12" />
+    <path d="M6 13l8.5 8" />
+    <path d="M15 13c-2.5 0-5-1.5-5-4" />
+  </svg>
+);
 
 const mockProfile = {
   profilePic: 'https://www.gstatic.com/images/branding/product/2x/avatar_square_blue_512dp.png',
@@ -37,10 +57,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [buyProducts, setBuyProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [buyLoading, setBuyLoading] = useState(true);
-  const [editIdx, setEditIdx] = useState(-1);
-  const [editProduct, setEditProduct] = useState(null);
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
-  const [isEditingPin, setIsEditingPin] = useState(false);
   const [searchBuy, setSearchBuy] = useState('');
   const [searchSell, setSearchSell] = useState('');
   const [expandedSellIdx, setExpandedSellIdx] = useState<number | null>(null);
@@ -461,23 +477,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
-  const handleEdit = (idx) => {
-    setEditIdx(idx);
-    setEditProduct({ ...sellProducts[idx] });
-  };
-
-  const handleEditChange = (e) => {
-    setEditProduct({ ...editProduct, [e.target.name]: e.target.value });
-  };
-
-  const handleEditSave = (idx) => {
-    const updated = [...sellProducts];
-    updated[idx] = editProduct;
-    setSellProducts(updated);
-    setEditIdx(-1);
-    setEditProduct(null);
-  };
-
   // Edit sell product
   const handleEditSellProduct = (product: any) => {
     setEditingSellProduct({
@@ -562,17 +561,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
-  const handleAddressEdit = () => setIsEditingAddress(true);
-  const handleAddressSave = () => {
-    setIsEditingAddress(false);
-    // Optionally, update backend here
-  };
-  const handlePinEdit = () => setIsEditingPin(true);
-  const handlePinSave = () => {
-    setIsEditingPin(false);
-    // Optionally, update backend here
-  };
-
   // Use profileData if available, otherwise fall back to mock data
   const displayName = profileData?.["Seller Name"] || user?.displayName || mockProfile.fullName;
   const email = profileData?.["Seller Email Address"] || user?.email || mockProfile.gmail;
@@ -626,26 +614,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <div style={{width: '100%'}}>
                 <span className="info-label">ADDRESS</span>
                 <div className="profile-edit-row">
-                  {isEditingAddress ? (
-                    <>
-                      <input
-                        className="profile-edit-input"
-                        value={profileData?.["Seller Address"] || mockProfile.address}
-                        onChange={e => {
-                          // Handle address change
-                        }}
-                        style={{marginRight: 8, width: '80%'}}
-                      />
-                      <button className="profile-edit-save" onClick={handleAddressSave}>Save</button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="info-value" style={{marginRight: 8}}>{profileData?.["Seller Address"] || mockProfile.address}</span>
-                      <button className="profile-edit-icon-btn" onClick={handleAddressEdit} title="Edit address">
-                        <Edit size={18} />
-                      </button>
-                    </>
-                  )}
+                  <span className="info-value">{profileData?.["Seller Address"] || mockProfile.address}</span>
                 </div>
               </div>
             </div>
@@ -654,26 +623,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <div style={{width: '100%'}}>
                 <span className="info-label">PIN CODE</span>
                 <div className="profile-edit-row">
-                  {isEditingPin ? (
-                    <>
-                      <input
-                        className="profile-edit-input"
-                        value={profileData?.["PIN Code"] || mockProfile.pin}
-                        onChange={e => {
-                          // Handle pin change
-                        }}
-                        style={{marginRight: 8, width: '50%'}}
-                      />
-                      <button className="profile-edit-save" onClick={handlePinSave}>Save</button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="info-value" style={{marginRight: 8}}>{profileData?.["PIN Code"] || mockProfile.pin}</span>
-                      <button className="profile-edit-icon-btn" onClick={handlePinEdit} title="Edit pincode">
-                        <Edit size={18} />
-                      </button>
-                    </>
-                  )}
+                  <span className="info-value">{profileData?.["PIN Code"] || mockProfile.pin}</span>
                 </div>
               </div>
             </div>
@@ -853,7 +803,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                           >
                             <Package className="buy-icon" />
                             <span style={{ flex: 1, marginLeft: 12, fontWeight: 600 }}>{product.productName}</span>
-                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            {isExpanded ? (
+                              <ChevronUp size={20} style={{ color: '#3A8DCA' }} className="chevron-icon" />
+                            ) : (
+                              <ChevronDown size={20} style={{ color: '#3A8DCA' }} className="chevron-icon" />
+                            )}
                           </div>
                           {isExpanded && (
                             <div 
@@ -861,18 +815,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="product-header">
-                                {editIdx === i ? (
-                                  <input
-                                    name="productName"
-                                    value={editProduct.productName}
-                                    onChange={handleEditChange}
-                                    className="profile-edit-input"
-                                    placeholder="Product Name"
-                                    style={{fontWeight: 600, fontSize: '18px', marginBottom: 0}}
-                                  />
-                                ) : (
-                                  <h3 className="product-name">{product.productName}</h3>
-                                )}
+                                <h3 className="product-name">{product.productName}</h3>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                   <button className="edit-btn" onClick={() => handleEditSellProduct(product)}>
                                     <Edit size={16} />
@@ -893,51 +836,14 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                   </button>
                                 </div>
                               </div>
-                              {editIdx === i ? (
-                                <input
-                                  name="productCategory"
-                                  value={editProduct.productCategory}
-                                  onChange={handleEditChange}
-                                  className="profile-edit-input"
-                                  placeholder="Category"
-                                  style={{marginBottom: 8}}
-                                />
-                              ) : (
-                                <p className="product-category">{product.productCategory}</p>
-                              )}
-                              {editIdx === i ? (
-                                <textarea
-                                  name="productDescription"
-                                  value={editProduct.productDescription}
-                                  onChange={handleEditChange}
-                                  className="profile-edit-input"
-                                  placeholder="Product Description"
-                                  style={{marginBottom: 8, width: '100%', minHeight: 60}}
-                                />
-                              ) : (
-                                <p className="product-description">{product.productDescription}</p>
-                              )}
+                              <p className="product-category">{product.productCategory}</p>
+                              <p className="product-description">{product.productDescription}</p>
                               <div className="product-details">
                                 <div className="detail-item">
                                   <Package size={16} />
-                                  {editIdx === i ? (
-                                    <input
-                                      name="minimumOrderQuantity"
-                                      value={editProduct.minimumOrderQuantity}
-                                      onChange={handleEditChange}
-                                      className="profile-edit-input"
-                                      placeholder="Minimum Order Quantity"
-                                      type="number"
-                                      style={{width: 120}}
-                                    />
-                                  ) : (
-                                    <span>Min Order: {product.minimumOrderQuantity} {product.productUnit}</span>
-                                  )}
+                                  <span>MOQ: {product.minimumOrderQuantity} {product.productUnit}</span>
                                 </div>
                               </div>
-                              {editIdx === i && (
-                                <button className="profile-edit-save" style={{marginTop: 12}} onClick={() => handleEditSave(i)}>Save</button>
-                              )}
                             </div>
                           )}
                         </div>
@@ -1013,7 +919,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       height: '40px',
                     }}
                   >
-                    <DollarSign size={16} />
+                    <RupeeIcon size={16} />
                     Quotation Sent
                   </button>
                 </div>
