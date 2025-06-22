@@ -54,6 +54,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  // Delete confirmation modal state
+  const [showDeleteBuyModal, setShowDeleteBuyModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<string>('');
+  const [showDeleteSellModal, setShowDeleteSellModal] = useState(false);
+  const [sellProductToDelete, setSellProductToDelete] = useState<string>('');
+
   // Add sell product modal state
   const [showAddSellModal, setShowAddSellModal] = useState(false);
   const [sellProductForm, setSellProductForm] = useState([{
@@ -339,6 +345,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       if (response.ok) {
         const data = await response.json();
         setBuyProducts(data.products);
+        // Show success message
+        alert('Product removed successfully!');
       } else {
         const errorData = await response.json();
         alert(errorData.error || 'Failed to remove product');
@@ -521,8 +529,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   // Delete sell product
   const handleDeleteSellProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-
     try {
       setDeletingSellProduct(productId);
       
@@ -760,7 +766,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         <Package className="buy-icon" />
                         <span style={{ flex: 1 }}>{product}</span>
                         <button
-                          onClick={() => handleRemoveProduct(product)}
+                          onClick={() => {
+                            setShowDeleteBuyModal(true);
+                            setProductToDelete(product);
+                          }}
                           style={{
                             background: 'none',
                             border: 'none',
@@ -870,7 +879,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                   </button>
                                   <button 
                                     className="edit-btn" 
-                                    onClick={() => handleDeleteSellProduct(product.productId)}
+                                    onClick={() => {
+                                      setShowDeleteSellModal(true);
+                                      setSellProductToDelete(product.productId);
+                                    }}
                                     disabled={deletingSellProduct === product.productId}
                                   >
                                     {deletingSellProduct === product.productId ? (
@@ -1709,6 +1721,87 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 disabled={!editingSellProduct.productName.trim()}
               >
                 Update Product
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modals */}
+      {showDeleteBuyModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteBuyModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Deletion</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowDeleteBuyModal(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to remove <strong>"{productToDelete}"</strong> from your buy list?</p>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="modal-cancel-btn"
+                onClick={() => setShowDeleteBuyModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-submit-btn"
+                style={{ backgroundColor: '#dc3545' }}
+                onClick={() => {
+                  handleRemoveProduct(productToDelete);
+                  setShowDeleteBuyModal(false);
+                }}
+              >
+                Remove Product
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteSellModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteSellModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Deletion</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowDeleteSellModal(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this product from your sell list?</p>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="modal-cancel-btn"
+                onClick={() => setShowDeleteSellModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-submit-btn"
+                style={{ backgroundColor: '#dc3545' }}
+                onClick={() => {
+                  handleDeleteSellProduct(sellProductToDelete);
+                  setShowDeleteSellModal(false);
+                }}
+              >
+                Delete Product
               </button>
             </div>
           </div>
