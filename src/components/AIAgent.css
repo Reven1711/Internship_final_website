@@ -363,8 +363,8 @@
 
 .hub-center {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 55%;
+  left: 61%;
   transform: translate(-50%, -50%);
   width: 80px;
   height: 80px;
