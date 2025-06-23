@@ -170,6 +170,11 @@
   color: #374151;
 }
 
+/* Ensure mobile toggle is hidden by default on all screen sizes */
+.mobile-nav-toggle {
+  display: none !important;
+}
+
 /* Mobile Menu */
 .dashboard-mobile-menu {
   position: fixed;
@@ -266,13 +271,17 @@
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .dashboard-nav {
     display: none;
   }
   
   .dashboard-mobile-toggle {
-    display: block;
+    display: block !important;
+  }
+  
+  .mobile-nav-toggle {
+    display: flex !important;
   }
 }
 
