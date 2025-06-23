@@ -818,27 +818,31 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <div className="sell-grid">
                   {sellProducts
                     .filter(product => product.productName.toLowerCase().includes(searchSell.toLowerCase()))
-                    .map((product, i) => {
-                      const isExpanded = expandedSellIdx === i;
+                    .map((product, i, arr) => {
+                      // 3 columns per row
+                      const columns = 3;
+                      const expandedRow = expandedSellIdx !== null ? Math.floor(expandedSellIdx / columns) : null;
+                      const thisRow = Math.floor(i / columns);
+                      const isRowExpanded = expandedRow !== null && thisRow === expandedRow;
                       return (
                         <div
                           key={i}
-                          className={`sell-item-card${isExpanded ? ' expanded' : ''}`}
-                          style={{ cursor: 'pointer', marginBottom: 16, border: '1px solid #eee', borderRadius: 8, boxShadow: isExpanded ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', transition: 'box-shadow 0.2s' }}
+                          className={`sell-item-card${isRowExpanded ? ' expanded' : ''}`}
+                          style={{ cursor: 'pointer', marginBottom: 16, border: '1px solid #eee', borderRadius: 8, boxShadow: isRowExpanded ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', transition: 'box-shadow 0.2s' }}
                         >
                           <div 
                             style={{ display: 'flex', alignItems: 'center', padding: 16 }}
-                            onClick={() => setExpandedSellIdx(isExpanded ? null : i)}
+                            onClick={() => setExpandedSellIdx(isRowExpanded ? null : i)}
                           >
                             <Package className="buy-icon" />
                             <span style={{ flex: 1, marginLeft: 12, fontWeight: 600 }}>{product.productName}</span>
-                            {isExpanded ? (
+                            {isRowExpanded ? (
                               <ChevronUp size={20} style={{ color: '#3A8DCA' }} className="chevron-icon" />
                             ) : (
                               <ChevronDown size={20} style={{ color: '#3A8DCA' }} className="chevron-icon" />
                             )}
                           </div>
-                          {isExpanded && (
+                          {isRowExpanded && (
                             <div 
                               style={{ padding: 16, borderTop: '1px solid #eee', background: '#fafbfc' }}
                               onClick={(e) => e.stopPropagation()}

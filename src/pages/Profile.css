@@ -801,3 +801,26 @@
 .buy-item button:hover {
   background-color: #fef2f2 !important;
 }
+
+@media (max-width: 600px) {
+  .history-content > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .history-tabs {
+    flex-direction: row !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+  }
+  .history-tabs-and-search {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+  .history-search-bar {
+    width: 100% !important;
+    margin-top: 8px !important;
+    margin-left: 0 !important;
+  }
+}
