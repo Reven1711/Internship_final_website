@@ -24,7 +24,7 @@ const TermsOfUse: React.FC = () => {
         </div>
         <h1>Terms of Use</h1>
         <div className="legal-content">
-          <p><strong>Effective Date:20/06/2025</strong> [Date]</p>
+          <p><strong>Effective Date:</strong> 20/06/2025</p>
           
           <h2>1. Acceptance of Terms</h2>
           <p>By accessing and using Sourceasy ("the Platform"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.</p>

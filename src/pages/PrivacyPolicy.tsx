@@ -24,7 +24,7 @@ const PrivacyPolicy: React.FC = () => {
         </div>
         <h1>Privacy Policy</h1>
         <div className="legal-content">
-          <p><strong>Effective Date: 20/06/2025</strong> [Date]</p>
+          <p><strong>Effective Date: </strong> 20/06/2025</p>
           
           <h2>1. Introduction</h2>
           <p>Welcome to Sourceasy ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform and services.</p>
