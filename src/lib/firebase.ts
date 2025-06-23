@@ -3,13 +3,13 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA9YwDnZeC5erpCy6v-hmSIgwWaJFpM2c4",
-  authDomain: "sourceasy-db126.firebaseapp.com",
-  projectId: "sourceasy-db126",
-  storageBucket: "sourceasy-db126.appspot.com",
-  messagingSenderId: "169421443608",
-  appId: "1:169421443608:web:3da825fa4dae36714ce96d",
-  measurementId: "G-9208TSKP6T"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
