@@ -241,6 +241,4 @@
   }
 }
 
-.chatbot-button {
-  animation: pulse 2s infinite;
-} 
+/* Removed the pulse animation from chatbot-button */ 
