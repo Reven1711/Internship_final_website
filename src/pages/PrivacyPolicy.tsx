@@ -24,7 +24,7 @@ const PrivacyPolicy: React.FC = () => {
         </div>
         <h1>Privacy Policy</h1>
         <div className="legal-content">
-          <p><strong>Effective Date:</strong> [Date]</p>
+          <p><strong>Effective Date: 20/06/2025</strong> [Date]</p>
           
           <h2>1. Introduction</h2>
           <p>Welcome to Sourceasy ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform and services.</p>
@@ -98,9 +98,9 @@ const PrivacyPolicy: React.FC = () => {
           <h2>12. Contact Us</h2>
           <p>If you have any questions about this Privacy Policy or our privacy practices, please contact us at:</p>
           <p>
-            Email: privacy@sourceasy.com<br />
-            Address: [Your Company Address]<br />
-            Phone: [Your Phone Number]
+            Email: aidhandho@gmail.com<br />
+            Address: 601, Shikhar Complex, Navrangpura, Ahmedabad, Gujarat, India, 380009<br />
+            Phone: +91 93275 57993
           </p>
         </div>
       </div>

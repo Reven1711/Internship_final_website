@@ -24,7 +24,7 @@ const TermsOfUse: React.FC = () => {
         </div>
         <h1>Terms of Use</h1>
         <div className="legal-content">
-          <p><strong>Effective Date:</strong> [Date]</p>
+          <p><strong>Effective Date:20/06/2025</strong> [Date]</p>
           
           <h2>1. Acceptance of Terms</h2>
           <p>By accessing and using Sourceasy ("the Platform"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.</p>
@@ -91,9 +91,9 @@ const TermsOfUse: React.FC = () => {
           <h2>14. Contact Information</h2>
           <p>If you have any questions about these Terms of Use, please contact us at:</p>
           <p>
-            Email: legal@sourceasy.com<br />
-            Address: [Your Company Address]<br />
-            Phone: [Your Phone Number]
+            Email: aidhandho@gmail.com<br />
+            Address: 601, Shikhar Complex, Navrangpura, Ahmedabad, Gujarat, India, 380009<br />
+            Phone: +91 93275 57993
           </p>
         </div>
       </div>
