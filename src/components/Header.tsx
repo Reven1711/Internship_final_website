@@ -3,6 +3,7 @@ import { MessageCircle, Menu, X, LogIn } from 'lucide-react';
 import './Header.css';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import gsap from 'gsap';
+import Popup from './ui/Popup';
 
 interface HeaderProps {
   user: any;
@@ -22,6 +23,7 @@ const getInitials = (name: string) => {
 const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,7 +35,11 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
   }, []);
 
   const handleStartInquiry = () => {
-    window.open('https://wa.me/14155238886?text=Hello%20Sourceasy,%20I%20would%20like%20to%20make%20an%20inquiry', '_blank');
+    setIsPopupOpen(true);
+  };
+
+  const closePopup = () => {
+    setIsPopupOpen(false);
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -197,6 +203,14 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
           )}
         </div>
       </div>
+
+      {/* Coming Soon Popup */}
+      <Popup
+        isOpen={isPopupOpen}
+        onClose={closePopup}
+        title="Coming Soon"
+        message="Our inquiry system is in the works! We're building something great to enhance your experience. Stay tuned for exciting updates."
+      />
     </>
   );
 };

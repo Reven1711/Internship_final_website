@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Phone, Pin, Building2, Edit, ChevronDown, ChevronUp, Plus, X, FileText, Download, Share2 } from 'lucide-react';
 import './Profile.css';
+import Popup from '../components/ui/Popup';
 
 // Rupee symbol component
 const RupeeIcon = ({ size = 16, className = "" }) => (
@@ -99,6 +100,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Search state for history sections
   const [inquirySearch, setInquirySearch] = useState('');
   const [quotationSearch, setQuotationSearch] = useState('');
+
+  // Edit profile popup state
+  const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
 
   // Dummy data for history section
   const inquiryData = [
@@ -528,30 +532,30 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   // Delete sell product
   const handleDeleteSellProduct = async (productId: string) => {
+    if (!user?.email) return;
+
     try {
       setDeletingSellProduct(productId);
-      
       const response = await fetch('/api/sell-products/delete', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ productId }),
+        body: JSON.stringify({ 
+          email: user.email, 
+          productId: productId 
+        }),
       });
-
-      const data = await response.json();
 
       if (response.ok) {
         // Refresh the sell products list
         await fetchSellProducts();
+        setShowDeleteSellModal(false);
+        setSellProductToDelete('');
         alert('Product deleted successfully!');
-        
-        // Store current tab before reloading
-        sessionStorage.setItem('profileActiveTab', tab);
-        // Reload the page to show changes
-        window.location.reload();
       } else {
-        alert(data.error || 'Failed to delete product');
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete product');
       }
     } catch (error) {
       console.error('Error deleting sell product:', error);
@@ -559,6 +563,15 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     } finally {
       setDeletingSellProduct(null);
     }
+  };
+
+  // Edit profile popup handlers
+  const handleEditProfile = () => {
+    setIsEditPopupOpen(true);
+  };
+
+  const closeEditPopup = () => {
+    setIsEditPopupOpen(false);
   };
 
   // Use profileData if available, otherwise fall back to mock data
@@ -624,6 +637,13 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <span className="info-label">PIN CODE</span>
                 <div className="profile-edit-row">
                   <span className="info-value">{profileData?.["PIN Code"] || mockProfile.pin}</span>
+                  <button 
+                    onClick={handleEditProfile}
+                    className="edit-button"
+                    title="Edit PIN Code"
+                  >
+                    <Edit size={14} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -634,7 +654,16 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <Phone className="info-icon" />
                 <div>
                   <span className="info-label">PHONE</span>
-                  <span className="info-value">{userPhone}</span>
+                  <div className="profile-edit-row">
+                    <span className="info-value">{userPhone}</span>
+                    <button 
+                      onClick={handleEditProfile}
+                      className="edit-button"
+                      title="Edit Phone Number"
+                    >
+                      <Edit size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -696,7 +725,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 </button>
               </div>
               
-              <h2 className="section-title">Products You Have Bought</h2>
+              <h2 className="section-title">Products You Buy</h2>
               
               {buyLoading ? (
                 <div className="loading-state">
@@ -1713,6 +1742,15 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* Edit Profile Popup */}
+      <Popup
+        isOpen={isEditPopupOpen}
+        onClose={closeEditPopup}
+        title="Contact Support"
+        message="To update your PIN code or phone number, please contact our support team via WhatsApp. We'll help you make the necessary changes to your profile information."
+        buttonText="Change via WhatsApp"
+      />
     </div>
   );
 };

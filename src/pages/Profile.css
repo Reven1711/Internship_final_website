@@ -182,7 +182,7 @@
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   font-weight: 500;
-  color: #374151;
+  color: #1E3A8A;
 }
 
 .buy-icon {
@@ -487,8 +487,27 @@
 .profile-edit-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 2px;
+  gap: 8px;
+  width: 100%;
+}
+
+.edit-button {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.edit-button:hover {
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
 .profile-edit-icon-btn {
