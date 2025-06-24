@@ -22,6 +22,7 @@ import Profile from './pages/Profile';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
@@ -227,19 +228,17 @@ const App = () => {
   }
 
   return (
-    <>
-      {/* Main app is always rendered, but hidden on mobile while loading */}
+    <BrowserRouter>
+      <ScrollToTop />
       <div style={isMobile && isLoading ? { display: 'none' } : {}}>
-        <BrowserRouter>
-          <AppContent 
-            user={user}
-            onLoginClick={handleLoginClick}
-            onLogout={handleLogout}
-            handleAuthSuccess={handleAuthSuccess}
-            isLoginModalOpen={isLoginModalOpen}
-            handleLoginClose={handleLoginClose}
-          />
-        </BrowserRouter>
+        <AppContent 
+          user={user}
+          onLoginClick={handleLoginClick}
+          onLogout={handleLogout}
+          handleAuthSuccess={handleAuthSuccess}
+          isLoginModalOpen={isLoginModalOpen}
+          handleLoginClose={handleLoginClose}
+        />
       </div>
       {/* Loader overlays only on mobile while loading */}
       {isMobile && isLoading && (
@@ -247,7 +246,7 @@ const App = () => {
           <MobileLoader onLoadComplete={handleLoadComplete} />
         </div>
       )}
-    </>
+    </BrowserRouter>
   );
 };
 
