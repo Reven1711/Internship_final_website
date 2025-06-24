@@ -925,21 +925,17 @@ app.get("/api/unapproved-chemicals/pending", async (req, res) => {
         status: match.metadata.status,
         submittedAt: match.metadata.submittedAt,
       })) || [];
-    res
-      .status(200)
-      .json({
-        success: true,
-        requests: pendingRequests,
-        count: pendingRequests.length,
-      });
+    res.status(200).json({
+      success: true,
+      requests: pendingRequests,
+      count: pendingRequests.length,
+    });
   } catch (error) {
     console.error("Error fetching unapproved chemicals:", error);
-    res
-      .status(500)
-      .json({
-        error: "Failed to fetch unapproved chemicals",
-        details: error.message,
-      });
+    res.status(500).json({
+      error: "Failed to fetch unapproved chemicals",
+      details: error.message,
+    });
   }
 });
 
@@ -1072,22 +1068,18 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
 
     // Delete from unapproved_chemicals
     await index.namespace("unapproved_chemicals").deleteOne(id);
-    res
-      .status(200)
-      .json({
-        success: true,
-        message:
-          "Chemical approved and added to approved_chemicals and user's buy list",
-        id,
-      });
+    res.status(200).json({
+      success: true,
+      message:
+        "Chemical approved and added to approved_chemicals and user's buy list",
+      id,
+    });
   } catch (error) {
     console.error("Error approving unapproved chemical:", error);
-    res
-      .status(500)
-      .json({
-        error: "Failed to approve unapproved chemical",
-        details: error.message,
-      });
+    res.status(500).json({
+      error: "Failed to approve unapproved chemical",
+      details: error.message,
+    });
   }
 });
 
@@ -1111,21 +1103,17 @@ app.post("/api/unapproved-chemicals/reject", async (req, res) => {
 
     // Delete from unapproved_chemicals
     await index.namespace("unapproved_chemicals").deleteOne(id);
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Chemical request rejected and removed",
-        id,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Chemical request rejected and removed",
+      id,
+    });
   } catch (error) {
     console.error("Error rejecting unapproved chemical:", error);
-    res
-      .status(500)
-      .json({
-        error: "Failed to reject unapproved chemical",
-        details: error.message,
-      });
+    res.status(500).json({
+      error: "Failed to reject unapproved chemical",
+      details: error.message,
+    });
   }
 });
 
@@ -1289,6 +1277,118 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
     console.error("Error fetching quotations:", error);
     res.status(500).json({
       error: "Failed to fetch quotations",
+      details: error.message,
+    });
+  }
+});
+
+// Get inquiries for a specific user number (phone number)
+app.get("/api/inquiries/:userNumber", async (req, res) => {
+  try {
+    const { userNumber } = req.params;
+
+    if (!userNumber) {
+      return res.status(400).json({
+        error: "User number (phone number) is required",
+      });
+    }
+
+    console.log(`Fetching inquiries for user number: ${userNumber}`);
+
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Try different phone number formats to match the userNumber field
+    const phoneFormats = [
+      userNumber,
+      `+91${userNumber}`,
+      `+91 ${userNumber}`,
+      `whatsapp:+91${userNumber}`,
+      `whatsapp:+91 ${userNumber}`,
+      userNumber.replace("+91", "").replace(/\s/g, ""),
+      userNumber.replace("whatsapp:", ""),
+    ];
+
+    console.log("Trying phone formats:", phoneFormats);
+
+    let queryResponse = null;
+    let matchedFormat = null;
+
+    // Try each format until we find a match
+    for (const format of phoneFormats) {
+      try {
+        const response = await index.namespace("buyers").query({
+          vector: dummyVector,
+          filter: {
+            userNumber: { $eq: format },
+          },
+          topK: 100, // Get up to 100 inquiries
+          includeMetadata: true,
+        });
+
+        if (response.matches && response.matches.length > 0) {
+          queryResponse = response;
+          matchedFormat = format;
+          console.log(`Found matches with format: ${format}`);
+          break;
+        }
+      } catch (error) {
+        console.log(`No matches found with format: ${format}`);
+        continue;
+      }
+    }
+
+    console.log(
+      "Pinecone query response for inquiries:",
+      JSON.stringify(queryResponse, null, 2)
+    );
+
+    if (
+      queryResponse &&
+      queryResponse.matches &&
+      queryResponse.matches.length > 0
+    ) {
+      // Transform the data to match the frontend expectations
+      const inquiries = queryResponse.matches.map((match) => {
+        const metadata = match.metadata;
+        return {
+          id: match.id,
+          orderId: metadata.orderId || "N/A",
+          productName: Array.isArray(metadata.products)
+            ? metadata.products.join(", ")
+            : metadata.products || "Unknown Product",
+          deliveryLocation: metadata.deliveryLocation || "N/A",
+          quantity: metadata.quantity || "N/A",
+          comparisonReportLink: metadata.comparisonReportLink || "#",
+          expectedResponses: metadata.expectedResponses || 0,
+          responseCount: metadata.responseCount || 0,
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        inquiries: inquiries,
+        count: inquiries.length,
+        matchedFormat: matchedFormat,
+      });
+    } else {
+      // No inquiries found for this user number
+      res.status(200).json({
+        success: true,
+        inquiries: [],
+        count: 0,
+        message: "No inquiries found for this user number",
+        triedFormats: phoneFormats,
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching inquiries:", error);
+    res.status(500).json({
+      error: "Failed to fetch inquiries",
       details: error.message,
     });
   }

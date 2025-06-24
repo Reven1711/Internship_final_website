@@ -109,45 +109,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [quotationData, setQuotationData] = useState<any[]>([]);
   const [quotationLoading, setQuotationLoading] = useState(false);
 
-  // Dummy data for history section
-  const inquiryData = [
-    {
-      id: 1,
-      date: '2024-01-15',
-      productName: 'Acetic Acid',
-      productCategory: 'Pharmaceutical',
-      moq: 100,
-      unit: 'Kg',
-      pdfLink: 'https://example.com/inquiry1.pdf'
-    },
-    {
-      id: 2,
-      date: '2024-01-10',
-      productName: 'Sulfuric Acid',
-      productCategory: 'Industrial',
-      moq: 500,
-      unit: 'Litre',
-      pdfLink: 'https://example.com/inquiry2.pdf'
-    },
-    {
-      id: 3,
-      date: '2024-01-05',
-      productName: 'Hydrochloric Acid',
-      productCategory: 'Laboratory',
-      moq: 50,
-      unit: 'Kg',
-      pdfLink: 'https://example.com/inquiry3.pdf'
-    },
-    {
-      id: 4,
-      date: '2023-12-28',
-      productName: 'Sodium Hydroxide',
-      productCategory: 'Industrial',
-      moq: 200,
-      unit: 'Kg',
-      pdfLink: 'https://example.com/inquiry4.pdf'
-    }
-  ];
+  // Inquiry data state
+  const [inquiryData, setInquiryData] = useState<any[]>([]);
+  const [inquiryLoading, setInquiryLoading] = useState(false);
 
   const [masterProductList, setMasterProductList] = useState<string[]>([]);
 
@@ -324,6 +288,42 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
+  // Fetch inquiries from database
+  const fetchInquiries = async () => {
+    // Use phone number from profileData if available, otherwise fall back to user.phone or mock data
+    const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+    
+    console.log('Fetching inquiries with phone number:', phoneNumber);
+    console.log('Profile data:', profileData);
+    console.log('User data:', user);
+    
+    if (!phoneNumber) {
+      console.log('No phone number available for fetching inquiries');
+      setInquiryData([]);
+      return;
+    }
+
+    try {
+      setInquiryLoading(true);
+      const response = await fetch(`/api/inquiries/${encodeURIComponent(phoneNumber)}`);
+      const data = await response.json();
+
+      console.log('Inquiries API response:', data);
+
+      if (response.ok) {
+        setInquiryData(data.inquiries || []);
+      } else {
+        console.error('Error fetching inquiries:', data.error);
+        setInquiryData([]);
+      }
+    } catch (error) {
+      console.error('Error fetching inquiries:', error);
+      setInquiryData([]);
+    } finally {
+      setInquiryLoading(false);
+    }
+  };
+
   // Fetch data when component mounts
   useEffect(() => {
     if (user?.email) {
@@ -333,10 +333,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   }, [user?.email]);
 
-  // Fetch quotations when profileData is available
+  // Fetch quotations and inquiries when profileData is available
   useEffect(() => {
     if (profileData) {
       fetchQuotations();
+      fetchInquiries();
     }
   }, [profileData]);
 
@@ -1130,138 +1131,170 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               {/* Inquiry Raised Content */}
               {historyTab === 'inquiry' && (
                 <div className="inquiry-content">
-                  <div className="inquiry-grid" style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                    gap: '20px'
-                  }}>
-                    {inquiryData
-                      .filter(inquiry => 
-                        inquiry.productName.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-                        inquiry.productCategory.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-                        inquiry.unit.toLowerCase().includes(inquirySearch.toLowerCase())
-                      )
-                      .map((inquiry) => (
-                      <div key={inquiry.id} className="inquiry-card" style={{
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                        transition: 'box-shadow 0.2s ease'
+                  {inquiryLoading ? (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '40px',
+                      color: '#6b7280'
+                    }}>
+                      <div style={{
+                        textAlign: 'center'
                       }}>
-                        <div className="inquiry-header" style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          marginBottom: '16px'
+                        <div style={{
+                          fontSize: '16px',
+                          marginBottom: '8px'
                         }}>
-                          <div>
-                            <h3 style={{
-                              fontSize: '18px',
-                              fontWeight: '600',
-                              color: '#1f2937',
-                              margin: '0 0 4px 0'
-                            }}>
-                              {inquiry.productName}
-                            </h3>
-                            <p style={{
-                              fontSize: '14px',
-                              color: '#6b7280',
-                              margin: '0'
-                            }}>
-                              {inquiry.productCategory}
-                            </p>
-                          </div>
-                          <div style={{
-                            textAlign: 'right'
-                          }}>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#6b7280',
-                              marginBottom: '4px'
-                            }}>
-                              Date
-                            </div>
-                            <div style={{
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#1f2937'
-                            }}>
-                              {new Date(inquiry.date).toLocaleDateString()}
-                            </div>
-                          </div>
+                          Loading inquiries...
                         </div>
-                        
-                        <div className="inquiry-details" style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '12px',
-                          marginBottom: '16px'
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#9ca3af'
                         }}>
-                          <div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#6b7280',
-                              marginBottom: '2px'
-                            }}>
-                              MOQ
-                            </div>
-                            <div style={{
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#1f2937'
-                            }}>
-                              {inquiry.moq} {inquiry.unit}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#6b7280',
-                              marginBottom: '2px'
-                            }}>
-                              Unit
-                            </div>
-                            <div style={{
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#1f2937'
-                            }}>
-                              {inquiry.unit}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="inquiry-actions">
-                          <a
-                            href={inquiry.pdfLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '8px 16px',
-                              backgroundColor: '#2563eb',
-                              color: 'white',
-                              textDecoration: 'none',
-                              borderRadius: '6px',
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              transition: 'background-color 0.2s ease',
-                              width: 'fit-content'
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                          >
-                            <FileText size={16} />
-                            View PDF
-                          </a>
+                          Please wait while we fetch your inquiry history
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : inquiryData.length === 0 ? (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '40px',
+                      color: '#6b7280'
+                    }}>
+                      <div style={{
+                        textAlign: 'center'
+                      }}>
+                        <div style={{
+                          fontSize: '16px',
+                          marginBottom: '8px'
+                        }}>
+                          No inquiries found
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#9ca3af'
+                        }}>
+                          {(() => {
+                            const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+                            return phoneNumber ? 
+                              `No inquiries found for phone number: ${phoneNumber}` : 
+                              'Phone number not available to fetch inquiries';
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="inquiry-grid" style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                      gap: '20px'
+                    }}>
+                      {inquiryData
+                        .filter(inquiry => 
+                          inquiry.productName.toLowerCase().includes(inquirySearch.toLowerCase()) ||
+                          inquiry.deliveryLocation.toLowerCase().includes(inquirySearch.toLowerCase()) ||
+                          inquiry.quantity.toLowerCase().includes(inquirySearch.toLowerCase())
+                        )
+                        .map((inquiry) => (
+                        <div key={inquiry.id} className="inquiry-card" style={{
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          padding: '20px',
+                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                          transition: 'box-shadow 0.2s ease'
+                        }}>
+                          <div className="inquiry-header" style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '16px'
+                          }}>
+                            <div>
+                              <h3 style={{
+                                fontSize: '18px',
+                                fontWeight: '600',
+                                color: '#1f2937',
+                                margin: '0 0 4px 0'
+                              }}>
+                                {inquiry.productName}
+                              </h3>
+                            </div>
+                          </div>
+                          
+                          <div className="inquiry-details" style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '12px',
+                            marginBottom: '16px'
+                          }}>
+                            <div>
+                              <div style={{
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                marginBottom: '2px'
+                              }}>
+                                Quantity
+                              </div>
+                              <div style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1f2937'
+                              }}>
+                                {inquiry.quantity}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                marginBottom: '2px'
+                              }}>
+                                Delivery Location
+                              </div>
+                              <div style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1f2937'
+                              }}>
+                                {inquiry.deliveryLocation}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="inquiry-actions">
+                            <a
+                              href={inquiry.comparisonReportLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 16px',
+                                backgroundColor: '#2563eb',
+                                color: 'white',
+                                textDecoration: 'none',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                transition: 'background-color 0.2s ease',
+                                width: 'fit-content'
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                            >
+                              <FileText size={16} />
+                              View Report
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
