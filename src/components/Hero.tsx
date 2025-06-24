@@ -44,7 +44,7 @@ const Hero = () => {
               </h1>
               
               <p className="hero-description">
-                Connect with 5000+ verified suppliers instantly. Get competitive quotations and close deals faster than ever.
+                  Find and connect with 5,000+ verified suppliers in your preferred language. Get competitive quotations and close deals faster than ever.
               </p>
               
               {/* CTA Buttons */}
