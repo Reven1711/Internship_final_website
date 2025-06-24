@@ -75,6 +75,20 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
     return () => window.removeEventListener('scroll', toggleVisibility);
   }, []);
 
+  useEffect(() => {
+    // Cross-page section scroll support
+    const sectionId = sessionStorage.getItem('scrollToSection');
+    if (sectionId) {
+      setTimeout(() => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+          section.scrollIntoView({ behavior: 'smooth' });
+        }
+        sessionStorage.removeItem('scrollToSection');
+      }, 300);
+    }
+  }, []);
+
   const PageWrapper = isMobile ? 'div' : motion.div;
 
   return (

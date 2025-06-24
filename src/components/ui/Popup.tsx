@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { X } from 'lucide-react';
 import './Popup.css';
 
@@ -20,13 +21,21 @@ const Popup: React.FC<PopupProps> = ({
   buttonText = "Got it"
 }) => {
   useEffect(() => {
+    // Prevent scroll and overflow clipping on all relevant parents
+    const parents = [
+      document.body,
+      document.getElementById('root'),
+      ...Array.from(document.querySelectorAll('.hero, .ai-agent'))
+    ];
     if (isOpen) {
+      parents.forEach(el => { if (el && 'style' in el) (el as HTMLElement).style.overflow = 'unset'; });
       document.body.style.overflow = 'hidden';
     } else {
+      parents.forEach(el => { if (el && 'style' in el) (el as HTMLElement).style.overflow = ''; });
       document.body.style.overflow = 'unset';
     }
-
     return () => {
+      parents.forEach(el => { if (el && 'style' in el) (el as HTMLElement).style.overflow = ''; });
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
@@ -49,7 +58,7 @@ const Popup: React.FC<PopupProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  return ReactDOM.createPortal(
     <div className="popup-overlay" onClick={onClose}>
       <div className="popup-content" onClick={(e) => e.stopPropagation()}>
         {showCloseButton && (
@@ -69,7 +78,8 @@ const Popup: React.FC<PopupProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

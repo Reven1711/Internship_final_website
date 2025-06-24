@@ -96,6 +96,16 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
     onLoginClick();
   };
 
+  const handleNavSection = (sectionId: string) => {
+    setIsMobileMenuOpen(false);
+    if (window.location.pathname !== '/') {
+      sessionStorage.setItem('scrollToSection', sectionId);
+      window.location.href = '/';
+    } else {
+      scrollToSection(sectionId);
+    }
+  };
+
   return (
     <>
       <header className={`header ${isScrolled ? 'scrolled' : ''}`}>
@@ -111,9 +121,9 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
             <div className="header-main-row">
               {/* Nav and action buttons cluster */}
               <nav className="nav nav-cluster">
-                <button onClick={() => scrollToSection('about')} className="nav-button">About</button>
-                <button onClick={() => scrollToSection('community')} className="nav-button">Community</button>
-                <button onClick={() => scrollToSection('contact')} className="nav-button">Contact Us</button>
+                <button onClick={() => handleNavSection('about')} className="nav-button">About</button>
+                <button onClick={() => handleNavSection('community')} className="nav-button">Community</button>
+                <button onClick={() => handleNavSection('contact')} className="nav-button">Contact Us</button>
                 <button onClick={handleStartInquiry} className="inquiry-button">
                   <MessageCircle className="inquiry-button-icon" />
                   <span>Start Inquiry</span>
@@ -176,19 +186,19 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
       <div className={`mobile-nav-menu ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="mobile-nav-content">
           <button
-            onClick={() => scrollToSection('about')}
+            onClick={() => handleNavSection('about')}
             className="mobile-nav-button"
           >
             About
           </button>
           <button
-            onClick={() => scrollToSection('community')}
+            onClick={() => handleNavSection('community')}
             className="mobile-nav-button"
           >
             Community
           </button>
           <button
-            onClick={() => scrollToSection('contact')}
+            onClick={() => handleNavSection('contact')}
             className="mobile-nav-button"
           >
             Contact Us

@@ -1751,8 +1751,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       <Popup
         isOpen={isEditPopupOpen}
         onClose={closeEditPopup}
-        title="Contact Support"
-        message="To update your PIN code or phone number, please contact our support team via WhatsApp. We'll help you make the necessary changes to your profile information."
+        title="Contact our Agent"
+        message="For assistance in updating your PIN code or phone number, please reach out to our AI Agent on WhatsApp."
         buttonText="Change via WhatsApp"
       />
     </div>
