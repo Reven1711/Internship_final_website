@@ -854,7 +854,9 @@ app.post("/api/product-requests/submit", async (req, res) => {
     dummyVector[0] = 1;
 
     // Generate unique request ID
-    const requestId = `unapproved_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = `unapproved_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
     // Store the request in the unapproved_chemicals namespace
     await index.namespace("unapproved_chemicals").upsert([
@@ -880,7 +882,8 @@ app.post("/api/product-requests/submit", async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Product request submitted successfully. It will be reviewed by our team.",
+      message:
+        "Product request submitted successfully. It will be reviewed by our team.",
       requestId: requestId,
     });
   } catch (error) {
@@ -896,8 +899,14 @@ app.post("/api/product-requests/submit", async (req, res) => {
 app.get("/api/unapproved-chemicals/pending", async (req, res) => {
   try {
     const { adminEmail } = req.query;
-    if (!adminEmail || (adminEmail !== "meet.r@ahduni.edu.in" && adminEmail !== "jay.r1@ahduni.edu.in")) {
-      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+    if (
+      !adminEmail ||
+      (adminEmail !== "meet.r@ahduni.edu.in" &&
+        adminEmail !== "jay.r1@ahduni.edu.in")
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized. Admin access required." });
     }
     const index = pinecone.index("chemicals-new");
     const dummyVector = new Array(1536).fill(0);
@@ -908,17 +917,29 @@ app.get("/api/unapproved-chemicals/pending", async (req, res) => {
       topK: 100,
       includeMetadata: true,
     });
-    const pendingRequests = queryResponse.matches?.map((match) => ({
-      id: match.metadata.id,
-      name: match.metadata.name,
-      email: match.metadata.email,
-      status: match.metadata.status,
-      submittedAt: match.metadata.submittedAt,
-    })) || [];
-    res.status(200).json({ success: true, requests: pendingRequests, count: pendingRequests.length });
+    const pendingRequests =
+      queryResponse.matches?.map((match) => ({
+        id: match.metadata.id,
+        name: match.metadata.name,
+        email: match.metadata.email,
+        status: match.metadata.status,
+        submittedAt: match.metadata.submittedAt,
+      })) || [];
+    res
+      .status(200)
+      .json({
+        success: true,
+        requests: pendingRequests,
+        count: pendingRequests.length,
+      });
   } catch (error) {
     console.error("Error fetching unapproved chemicals:", error);
-    res.status(500).json({ error: "Failed to fetch unapproved chemicals", details: error.message });
+    res
+      .status(500)
+      .json({
+        error: "Failed to fetch unapproved chemicals",
+        details: error.message,
+      });
   }
 });
 
@@ -926,8 +947,14 @@ app.get("/api/unapproved-chemicals/pending", async (req, res) => {
 app.post("/api/unapproved-chemicals/approve", async (req, res) => {
   try {
     const { adminEmail, id } = req.body;
-    if (!adminEmail || (adminEmail !== "meet.r@ahduni.edu.in" && adminEmail !== "jay.r1@ahduni.edu.in")) {
-      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+    if (
+      !adminEmail ||
+      (adminEmail !== "meet.r@ahduni.edu.in" &&
+        adminEmail !== "jay.r1@ahduni.edu.in")
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized. Admin access required." });
     }
     if (!id) {
       return res.status(400).json({ error: "Request ID is required" });
@@ -947,7 +974,7 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
     }
     const request = queryResponse.matches[0];
     const { name, email } = request.metadata;
-    
+
     // Add to approved_chemicals
     await index.namespace("approved_chemicals").upsert([
       {
@@ -962,24 +989,26 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
         },
       },
     ]);
-    
+
     // Add to user's buy list
     try {
       const buyProductsIndex = pinecone.index("products-you-buy");
       const buyDummyVector = new Array(1024).fill(0);
       buyDummyVector[0] = 1;
-      
+
       // Check if user already has a record in the "products" namespace
-      const buyQueryResponse = await buyProductsIndex.namespace("products").query({
-        vector: buyDummyVector,
-        filter: { email: { $eq: email } },
-        topK: 1,
-        includeMetadata: true,
-      });
-      
+      const buyQueryResponse = await buyProductsIndex
+        .namespace("products")
+        .query({
+          vector: buyDummyVector,
+          filter: { email: { $eq: email } },
+          topK: 1,
+          includeMetadata: true,
+        });
+
       let existingProducts = [];
       let recordId = null;
-      
+
       if (buyQueryResponse.matches && buyQueryResponse.matches.length > 0) {
         // User already has products, update existing record
         const metadata = buyQueryResponse.matches[0].metadata;
@@ -992,18 +1021,18 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
         }
         recordId = buyQueryResponse.matches[0].id;
       }
-      
+
       // Check if product already exists (case-insensitive, normalized)
       const normalizedNew = normalizeName(name);
       const productExists = existingProducts.some((existingProduct) => {
         const normalizedExisting = normalizeName(existingProduct);
         return normalizedExisting === normalizedNew;
       });
-      
+
       if (!productExists) {
         // Add new product to user's buy list
         existingProducts.push(name);
-        
+
         if (recordId) {
           // Update existing record
           await buyProductsIndex.namespace("products").deleteOne(recordId);
@@ -1040,13 +1069,25 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
       console.error("Error adding to user's buy list:", buyError);
       // Don't fail the approval if buy list addition fails
     }
-    
+
     // Delete from unapproved_chemicals
     await index.namespace("unapproved_chemicals").deleteOne(id);
-    res.status(200).json({ success: true, message: "Chemical approved and added to approved_chemicals and user's buy list", id });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message:
+          "Chemical approved and added to approved_chemicals and user's buy list",
+        id,
+      });
   } catch (error) {
     console.error("Error approving unapproved chemical:", error);
-    res.status(500).json({ error: "Failed to approve unapproved chemical", details: error.message });
+    res
+      .status(500)
+      .json({
+        error: "Failed to approve unapproved chemical",
+        details: error.message,
+      });
   }
 });
 
@@ -1054,20 +1095,37 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
 app.post("/api/unapproved-chemicals/reject", async (req, res) => {
   try {
     const { adminEmail, id } = req.body;
-    if (!adminEmail || (adminEmail !== "meet.r@ahduni.edu.in" && adminEmail !== "jay.r1@ahduni.edu.in")) {
-      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+    if (
+      !adminEmail ||
+      (adminEmail !== "meet.r@ahduni.edu.in" &&
+        adminEmail !== "jay.r1@ahduni.edu.in")
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized. Admin access required." });
     }
     if (!id) {
       return res.status(400).json({ error: "Request ID is required" });
     }
     const index = pinecone.index("chemicals-new");
-    
+
     // Delete from unapproved_chemicals
     await index.namespace("unapproved_chemicals").deleteOne(id);
-    res.status(200).json({ success: true, message: "Chemical request rejected and removed", id });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Chemical request rejected and removed",
+        id,
+      });
   } catch (error) {
     console.error("Error rejecting unapproved chemical:", error);
-    res.status(500).json({ error: "Failed to reject unapproved chemical", details: error.message });
+    res
+      .status(500)
+      .json({
+        error: "Failed to reject unapproved chemical",
+        details: error.message,
+      });
   }
 });
 
@@ -1099,16 +1157,17 @@ app.get("/api/product-requests/user/:email", async (req, res) => {
       includeMetadata: true,
     });
 
-    const userRequests = queryResponse.matches?.map((match) => ({
-      requestId: match.metadata.requestId,
-      productName: match.metadata.productName,
-      description: match.metadata.description,
-      category: match.metadata.category,
-      status: match.metadata.status,
-      submittedAt: match.metadata.submittedAt,
-      reviewedAt: match.metadata.reviewedAt,
-      reviewNotes: match.metadata.reviewNotes,
-    })) || [];
+    const userRequests =
+      queryResponse.matches?.map((match) => ({
+        requestId: match.metadata.requestId,
+        productName: match.metadata.productName,
+        description: match.metadata.description,
+        category: match.metadata.category,
+        status: match.metadata.status,
+        submittedAt: match.metadata.submittedAt,
+        reviewedAt: match.metadata.reviewedAt,
+        reviewNotes: match.metadata.reviewNotes,
+      })) || [];
 
     res.status(200).json({
       success: true,
@@ -1142,9 +1201,8 @@ app.get("/api/approved-chemicals", async (req, res) => {
     });
 
     // Use 'name' field from metadata
-    const approvedChemicals = queryResponse.matches?.map((match) => 
-      match.metadata["name"]
-    ) || [];
+    const approvedChemicals =
+      queryResponse.matches?.map((match) => match.metadata["name"]) || [];
 
     res.status(200).json({
       success: true,
@@ -1155,6 +1213,82 @@ app.get("/api/approved-chemicals", async (req, res) => {
     console.error("Error fetching approved chemicals:", error);
     res.status(500).json({
       error: "Failed to fetch approved chemicals",
+      details: error.message,
+    });
+  }
+});
+
+// Get quotations for a specific seller contact (phone number)
+app.get("/api/quotations/:sellerContact", async (req, res) => {
+  try {
+    const { sellerContact } = req.params;
+
+    if (!sellerContact) {
+      return res.status(400).json({
+        error: "Seller contact (phone number) is required",
+      });
+    }
+
+    console.log(`Fetching quotations for seller contact: ${sellerContact}`);
+
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Query for all quotations by this seller contact in the quotations namespace
+    const queryResponse = await index.namespace("quotations").query({
+      vector: dummyVector,
+      filter: {
+        sellerContact: { $eq: sellerContact },
+      },
+      topK: 100, // Get up to 100 quotations
+      includeMetadata: true,
+    });
+
+    console.log(
+      "Pinecone query response for quotations:",
+      JSON.stringify(queryResponse, null, 2)
+    );
+
+    if (queryResponse.matches && queryResponse.matches.length > 0) {
+      // Transform the data to match the frontend expectations
+      const quotations = queryResponse.matches.map((match) => {
+        const metadata = match.metadata;
+        return {
+          id: match.id,
+          productName: metadata.product || "Unknown Product",
+          unitRate: parseFloat(metadata.unitRate) || 0,
+          cashRate: parseFloat(metadata.cashRate) || 0,
+          paymentTerms: metadata.paymentTerms || "N/A",
+          deliveryTime: metadata.deliveryTime || "N/A",
+          additionalExpenses: metadata.additionalExpenses || "N/A",
+          description: metadata.description || "No description available",
+          orderId: metadata.orderId || "N/A",
+          supplierId: metadata.supplierId || "N/A",
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        quotations: quotations,
+        count: quotations.length,
+      });
+    } else {
+      // No quotations found for this seller contact
+      res.status(200).json({
+        success: true,
+        quotations: [],
+        count: 0,
+        message: "No quotations found for this seller contact",
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching quotations:", error);
+    res.status(500).json({
+      error: "Failed to fetch quotations",
       details: error.message,
     });
   }

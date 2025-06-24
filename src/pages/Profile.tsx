@@ -105,6 +105,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Edit profile popup state
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
 
+  // Quotation data state
+  const [quotationData, setQuotationData] = useState<any[]>([]);
+  const [quotationLoading, setQuotationLoading] = useState(false);
+
   // Dummy data for history section
   const inquiryData = [
     {
@@ -142,49 +146,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       moq: 200,
       unit: 'Kg',
       pdfLink: 'https://example.com/inquiry4.pdf'
-    }
-  ];
-
-  const quotationData = [
-    {
-      id: 1,
-      productName: 'Acetic Acid',
-      unitRate: 85,
-      cashRate: 80,
-      paymentTerms: '50% advance, 50% before delivery',
-      deliveryTime: '7-10 business days',
-      additionalExpenses: 'Transportation charges extra',
-      description: 'High purity acetic acid suitable for pharmaceutical applications'
-    },
-    {
-      id: 2,
-      productName: 'Sulfuric Acid',
-      unitRate: 45,
-      cashRate: 42,
-      paymentTerms: '100% advance payment',
-      deliveryTime: '5-7 business days',
-      additionalExpenses: 'GST extra as applicable',
-      description: 'Concentrated sulfuric acid for industrial use'
-    },
-    {
-      id: 3,
-      productName: 'Hydrochloric Acid',
-      unitRate: 65,
-      cashRate: 60,
-      paymentTerms: '30% advance, 70% on delivery',
-      deliveryTime: '3-5 business days',
-      additionalExpenses: 'Packaging charges included',
-      description: 'Laboratory grade hydrochloric acid'
-    },
-    {
-      id: 4,
-      productName: 'Sodium Hydroxide',
-      unitRate: 55,
-      cashRate: 52,
-      paymentTerms: 'Net 30 days',
-      deliveryTime: '10-15 business days',
-      additionalExpenses: 'Insurance charges extra',
-      description: 'Industrial grade sodium hydroxide pellets'
     }
   ];
 
@@ -327,6 +288,42 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
+  // Fetch quotations from database
+  const fetchQuotations = async () => {
+    // Use phone number from profileData if available, otherwise fall back to user.phone or mock data
+    const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+    
+    console.log('Fetching quotations with phone number:', phoneNumber);
+    console.log('Profile data:', profileData);
+    console.log('User data:', user);
+    
+    if (!phoneNumber) {
+      console.log('No phone number available for fetching quotations');
+      setQuotationData([]);
+      return;
+    }
+
+    try {
+      setQuotationLoading(true);
+      const response = await fetch(`/api/quotations/${encodeURIComponent(phoneNumber)}`);
+      const data = await response.json();
+
+      console.log('Quotations API response:', data);
+
+      if (response.ok) {
+        setQuotationData(data.quotations || []);
+      } else {
+        console.error('Error fetching quotations:', data.error);
+        setQuotationData([]);
+      }
+    } catch (error) {
+      console.error('Error fetching quotations:', error);
+      setQuotationData([]);
+    } finally {
+      setQuotationLoading(false);
+    }
+  };
+
   // Fetch data when component mounts
   useEffect(() => {
     if (user?.email) {
@@ -335,6 +332,13 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       fetchProfileData();
     }
   }, [user?.email]);
+
+  // Fetch quotations when profileData is available
+  useEffect(() => {
+    if (profileData) {
+      fetchQuotations();
+    }
+  }, [profileData]);
 
   // Restore active tab from sessionStorage
   useEffect(() => {
@@ -1264,158 +1268,215 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               {/* Quotation Sent Content */}
               {historyTab === 'quotation' && (
                 <div className="quotation-content">
-                  <div className="quotation-grid" style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-                    gap: '20px'
-                  }}>
-                    {quotationData
-                      .filter(quotation => 
-                        quotation.productName.toLowerCase().includes(quotationSearch.toLowerCase()) ||
-                        quotation.description.toLowerCase().includes(quotationSearch.toLowerCase()) ||
-                        quotation.paymentTerms.toLowerCase().includes(quotationSearch.toLowerCase()) ||
-                        quotation.deliveryTime.toLowerCase().includes(quotationSearch.toLowerCase())
-                      )
-                      .map((quotation) => (
-                      <div key={quotation.id} className="quotation-card" style={{
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                        transition: 'box-shadow 0.2s ease'
+                  {quotationLoading ? (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '40px',
+                      color: '#6b7280'
+                    }}>
+                      <div style={{
+                        textAlign: 'center'
                       }}>
-                        <div className="quotation-header" style={{
-                          marginBottom: '16px'
+                        <div style={{
+                          fontSize: '16px',
+                          marginBottom: '8px'
                         }}>
-                          <h3 style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: '#1f2937',
-                            margin: '0 0 8px 0'
-                          }}>
-                            {quotation.productName}
-                          </h3>
-                          <p style={{
-                            fontSize: '14px',
-                            color: '#6b7280',
-                            margin: '0',
-                            lineHeight: '1.5'
-                          }}>
-                            {quotation.description}
-                          </p>
+                          Loading quotations...
                         </div>
-
-                        <div className="quotation-pricing" style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '12px',
-                          marginBottom: '16px',
-                          padding: '12px',
-                          backgroundColor: '#f8fafc',
-                          borderRadius: '8px'
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#9ca3af'
                         }}>
-                          <div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#6b7280',
-                              marginBottom: '2px'
-                            }}>
-                              Unit Rate
-                            </div>
-                            <div style={{
-                              fontSize: '16px',
-                              fontWeight: '600',
-                              color: '#059669'
-                            }}>
-                              ₹{quotation.unitRate}/unit
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#6b7280',
-                              marginBottom: '2px'
-                            }}>
-                              Cash Rate
-                            </div>
-                            <div style={{
-                              fontSize: '16px',
-                              fontWeight: '600',
-                              color: '#dc2626'
-                            }}>
-                              ₹{quotation.cashRate}/unit
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="quotation-details" style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                          marginBottom: '16px'
-                        }}>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}>
-                            <span style={{
-                              fontSize: '12px',
-                              color: '#6b7280'
-                            }}>
-                              Payment Terms
-                            </span>
-                            <span style={{
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#1f2937'
-                            }}>
-                              {quotation.paymentTerms}
-                            </span>
-                          </div>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}>
-                            <span style={{
-                              fontSize: '12px',
-                              color: '#6b7280'
-                            }}>
-                              Delivery Time
-                            </span>
-                            <span style={{
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#1f2937'
-                            }}>
-                              {quotation.deliveryTime}
-                            </span>
-                          </div>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}>
-                            <span style={{
-                              fontSize: '12px',
-                              color: '#6b7280'
-                            }}>
-                              Additional Expenses
-                            </span>
-                            <span style={{
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#1f2937'
-                            }}>
-                              {quotation.additionalExpenses}
-                            </span>
-                          </div>
+                          Please wait while we fetch your quotation history
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : quotationData.length === 0 ? (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '40px',
+                      color: '#6b7280'
+                    }}>
+                      <div style={{
+                        textAlign: 'center'
+                      }}>
+                        <div style={{
+                          fontSize: '16px',
+                          marginBottom: '8px'
+                        }}>
+                          No quotations found
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#9ca3af'
+                        }}>
+                          {(() => {
+                            const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+                            return phoneNumber ? 
+                              `No quotations found for phone number: ${phoneNumber}` : 
+                              'Phone number not available to fetch quotations';
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="quotation-grid" style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+                      gap: '20px'
+                    }}>
+                      {quotationData
+                        .filter(quotation => 
+                          quotation.productName.toLowerCase().includes(quotationSearch.toLowerCase()) ||
+                          quotation.description.toLowerCase().includes(quotationSearch.toLowerCase()) ||
+                          quotation.paymentTerms.toLowerCase().includes(quotationSearch.toLowerCase()) ||
+                          quotation.deliveryTime.toLowerCase().includes(quotationSearch.toLowerCase())
+                        )
+                        .map((quotation) => (
+                        <div key={quotation.id} className="quotation-card" style={{
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          padding: '20px',
+                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                          transition: 'box-shadow 0.2s ease'
+                        }}>
+                          <div className="quotation-header" style={{
+                            marginBottom: '16px'
+                          }}>
+                            <h3 style={{
+                              fontSize: '18px',
+                              fontWeight: '600',
+                              color: '#1f2937',
+                              margin: '0 0 8px 0'
+                            }}>
+                              {quotation.productName}
+                            </h3>
+                            <p style={{
+                              fontSize: '14px',
+                              color: '#6b7280',
+                              margin: '0',
+                              lineHeight: '1.5'
+                            }}>
+                              {quotation.description}
+                            </p>
+                          </div>
+
+                          <div className="quotation-pricing" style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '12px',
+                            marginBottom: '16px',
+                            padding: '12px',
+                            backgroundColor: '#f8fafc',
+                            borderRadius: '8px'
+                          }}>
+                            <div>
+                              <div style={{
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                marginBottom: '2px'
+                              }}>
+                                Unit Rate
+                              </div>
+                              <div style={{
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: '#059669'
+                              }}>
+                                ₹{quotation.unitRate}/unit
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                marginBottom: '2px'
+                              }}>
+                                Cash Rate
+                              </div>
+                              <div style={{
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: '#dc2626'
+                              }}>
+                                ₹{quotation.cashRate}/unit
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="quotation-details" style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            marginBottom: '16px'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <span style={{
+                                fontSize: '12px',
+                                color: '#6b7280'
+                              }}>
+                                Payment Terms
+                              </span>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1f2937'
+                              }}>
+                                {quotation.paymentTerms}
+                              </span>
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <span style={{
+                                fontSize: '12px',
+                                color: '#6b7280'
+                              }}>
+                                Delivery Time
+                              </span>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1f2937'
+                              }}>
+                                {quotation.deliveryTime}
+                              </span>
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <span style={{
+                                fontSize: '12px',
+                                color: '#6b7280'
+                              }}>
+                                Additional Expenses
+                              </span>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1f2937'
+                              }}>
+                                {quotation.additionalExpenses}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
