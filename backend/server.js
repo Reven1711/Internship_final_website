@@ -835,6 +835,331 @@ app.delete("/api/sell-products/delete", async (req, res) => {
   }
 });
 
+// ===== PRODUCT REQUEST AND ADMIN APPROVAL ENDPOINTS =====
+
+// Submit a product request (for "Other Product")
+app.post("/api/product-requests/submit", async (req, res) => {
+  try {
+    const { email, productName } = req.body;
+
+    if (!email || !productName) {
+      return res.status(400).json({
+        error: "Email and product name are required",
+      });
+    }
+
+    // Use the correct index and vector dimension
+    const index = pinecone.index("chemicals-new");
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Generate unique request ID
+    const requestId = `unapproved_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Store the request in the unapproved_chemicals namespace
+    await index.namespace("unapproved_chemicals").upsert([
+      {
+        id: requestId,
+        values: dummyVector,
+        metadata: {
+          id: requestId,
+          name: productName,
+          email: email,
+          status: "pending",
+          submittedAt: new Date().toISOString(),
+        },
+      },
+    ]);
+
+    console.log("Unapproved chemical request submitted:", {
+      requestId,
+      email,
+      productName,
+      status: "pending",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Product request submitted successfully. It will be reviewed by our team.",
+      requestId: requestId,
+    });
+  } catch (error) {
+    console.error("Error submitting product request:", error);
+    res.status(500).json({
+      error: "Failed to submit product request",
+      details: error.message,
+    });
+  }
+});
+
+// Get all pending unapproved chemicals (admin only)
+app.get("/api/unapproved-chemicals/pending", async (req, res) => {
+  try {
+    const { adminEmail } = req.query;
+    if (!adminEmail || (adminEmail !== "meet.r@ahduni.edu.in" && adminEmail !== "jay.r1@ahduni.edu.in")) {
+      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+    }
+    const index = pinecone.index("chemicals-new");
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+    const queryResponse = await index.namespace("unapproved_chemicals").query({
+      vector: dummyVector,
+      filter: { status: { $eq: "pending" } },
+      topK: 100,
+      includeMetadata: true,
+    });
+    const pendingRequests = queryResponse.matches?.map((match) => ({
+      id: match.metadata.id,
+      name: match.metadata.name,
+      email: match.metadata.email,
+      status: match.metadata.status,
+      submittedAt: match.metadata.submittedAt,
+    })) || [];
+    res.status(200).json({ success: true, requests: pendingRequests, count: pendingRequests.length });
+  } catch (error) {
+    console.error("Error fetching unapproved chemicals:", error);
+    res.status(500).json({ error: "Failed to fetch unapproved chemicals", details: error.message });
+  }
+});
+
+// Approve an unapproved chemical (admin only)
+app.post("/api/unapproved-chemicals/approve", async (req, res) => {
+  try {
+    const { adminEmail, id } = req.body;
+    if (!adminEmail || (adminEmail !== "meet.r@ahduni.edu.in" && adminEmail !== "jay.r1@ahduni.edu.in")) {
+      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+    }
+    if (!id) {
+      return res.status(400).json({ error: "Request ID is required" });
+    }
+    const index = pinecone.index("chemicals-new");
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+    // Get the unapproved chemical details
+    const queryResponse = await index.namespace("unapproved_chemicals").query({
+      vector: dummyVector,
+      filter: { id: { $eq: id } },
+      topK: 1,
+      includeMetadata: true,
+    });
+    if (!queryResponse.matches || queryResponse.matches.length === 0) {
+      return res.status(404).json({ error: "Unapproved chemical not found" });
+    }
+    const request = queryResponse.matches[0];
+    const { name, email } = request.metadata;
+    
+    // Add to approved_chemicals
+    await index.namespace("approved_chemicals").upsert([
+      {
+        id: id,
+        values: dummyVector,
+        metadata: {
+          id: id,
+          name: name,
+          approvedBy: adminEmail,
+          approvedAt: new Date().toISOString(),
+          requestedBy: email,
+        },
+      },
+    ]);
+    
+    // Add to user's buy list
+    try {
+      const buyProductsIndex = pinecone.index("products-you-buy");
+      const buyDummyVector = new Array(1024).fill(0);
+      buyDummyVector[0] = 1;
+      
+      // Check if user already has a record in the "products" namespace
+      const buyQueryResponse = await buyProductsIndex.namespace("products").query({
+        vector: buyDummyVector,
+        filter: { email: { $eq: email } },
+        topK: 1,
+        includeMetadata: true,
+      });
+      
+      let existingProducts = [];
+      let recordId = null;
+      
+      if (buyQueryResponse.matches && buyQueryResponse.matches.length > 0) {
+        // User already has products, update existing record
+        const metadata = buyQueryResponse.matches[0].metadata;
+        if (Array.isArray(metadata.productList)) {
+          existingProducts = metadata.productList;
+        } else if (typeof metadata.productList === "string") {
+          existingProducts = JSON.parse(metadata.productList);
+        } else {
+          existingProducts = [];
+        }
+        recordId = buyQueryResponse.matches[0].id;
+      }
+      
+      // Check if product already exists (case-insensitive, normalized)
+      const normalizedNew = normalizeName(name);
+      const productExists = existingProducts.some((existingProduct) => {
+        const normalizedExisting = normalizeName(existingProduct);
+        return normalizedExisting === normalizedNew;
+      });
+      
+      if (!productExists) {
+        // Add new product to user's buy list
+        existingProducts.push(name);
+        
+        if (recordId) {
+          // Update existing record
+          await buyProductsIndex.namespace("products").deleteOne(recordId);
+          await buyProductsIndex.namespace("products").upsert([
+            {
+              id: recordId,
+              values: buyDummyVector,
+              metadata: {
+                email: email,
+                id: recordId,
+                productList: JSON.stringify(existingProducts),
+                productCount: existingProducts.length,
+              },
+            },
+          ]);
+        } else {
+          // Create new record
+          const newId = `buy_products_${Date.now()}`;
+          await buyProductsIndex.namespace("products").upsert([
+            {
+              id: newId,
+              values: buyDummyVector,
+              metadata: {
+                email: email,
+                id: newId,
+                productList: JSON.stringify(existingProducts),
+                productCount: existingProducts.length,
+              },
+            },
+          ]);
+        }
+      }
+    } catch (buyError) {
+      console.error("Error adding to user's buy list:", buyError);
+      // Don't fail the approval if buy list addition fails
+    }
+    
+    // Delete from unapproved_chemicals
+    await index.namespace("unapproved_chemicals").deleteOne(id);
+    res.status(200).json({ success: true, message: "Chemical approved and added to approved_chemicals and user's buy list", id });
+  } catch (error) {
+    console.error("Error approving unapproved chemical:", error);
+    res.status(500).json({ error: "Failed to approve unapproved chemical", details: error.message });
+  }
+});
+
+// Reject an unapproved chemical (admin only)
+app.post("/api/unapproved-chemicals/reject", async (req, res) => {
+  try {
+    const { adminEmail, id } = req.body;
+    if (!adminEmail || (adminEmail !== "meet.r@ahduni.edu.in" && adminEmail !== "jay.r1@ahduni.edu.in")) {
+      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+    }
+    if (!id) {
+      return res.status(400).json({ error: "Request ID is required" });
+    }
+    const index = pinecone.index("chemicals-new");
+    
+    // Delete from unapproved_chemicals
+    await index.namespace("unapproved_chemicals").deleteOne(id);
+    res.status(200).json({ success: true, message: "Chemical request rejected and removed", id });
+  } catch (error) {
+    console.error("Error rejecting unapproved chemical:", error);
+    res.status(500).json({ error: "Failed to reject unapproved chemical", details: error.message });
+  }
+});
+
+// Get user's product request history
+app.get("/api/product-requests/user/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Email is required",
+      });
+    }
+
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+
+    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1024).fill(0);
+    dummyVector[0] = 1;
+
+    // Query for all requests by this user
+    const queryResponse = await index.namespace("product-requests").query({
+      vector: dummyVector,
+      filter: {
+        email: { $eq: email },
+      },
+      topK: 50,
+      includeMetadata: true,
+    });
+
+    const userRequests = queryResponse.matches?.map((match) => ({
+      requestId: match.metadata.requestId,
+      productName: match.metadata.productName,
+      description: match.metadata.description,
+      category: match.metadata.category,
+      status: match.metadata.status,
+      submittedAt: match.metadata.submittedAt,
+      reviewedAt: match.metadata.reviewedAt,
+      reviewNotes: match.metadata.reviewNotes,
+    })) || [];
+
+    res.status(200).json({
+      success: true,
+      requests: userRequests,
+      count: userRequests.length,
+    });
+  } catch (error) {
+    console.error("Error fetching user product requests:", error);
+    res.status(500).json({
+      error: "Failed to fetch user requests",
+      details: error.message,
+    });
+  }
+});
+
+// Get approved chemicals list
+app.get("/api/approved-chemicals", async (req, res) => {
+  try {
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Query for all approved chemicals
+    const queryResponse = await index.namespace("approved_chemicals").query({
+      vector: dummyVector,
+      topK: 10000, // Get all approved chemicals
+      includeMetadata: true,
+    });
+
+    // Use 'name' field from metadata
+    const approvedChemicals = queryResponse.matches?.map((match) => 
+      match.metadata["name"]
+    ) || [];
+
+    res.status(200).json({
+      success: true,
+      chemicals: approvedChemicals,
+      count: approvedChemicals.length,
+    });
+  } catch (error) {
+    console.error("Error fetching approved chemicals:", error);
+    res.status(500).json({
+      error: "Failed to fetch approved chemicals",
+      details: error.message,
+    });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

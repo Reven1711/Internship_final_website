@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, User, ShoppingCart, Package, LogOut, Menu, X } from 'lucide-react';
+import { Home, User, ShoppingCart, Package, LogOut, Menu, X, Shield } from 'lucide-react';
 import './DashboardNavbar.css';
 
 interface DashboardNavbarProps {
@@ -14,10 +14,18 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Check if user is admin
+  const isAdmin = user?.email === 'meet.r@ahduni.edu.in' || user?.email === 'jay.r1@ahduni.edu.in';
+
   const navItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/dashboard' },
     { id: 'profile', label: 'Profile', icon: User, path: '/dashboard/profile' }
   ];
+
+  // Add admin item if user is admin
+  if (isAdmin) {
+    navItems.push({ id: 'admin', label: 'Admin', icon: Shield, path: '/dashboard/admin' });
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -60,7 +68,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
                   <button
                     key={item.id}
                     onClick={() => navigate(item.path)}
-                    className={`dashboard-nav-button ${isActive(item.path) ? 'active' : ''}`}
+                    className={`dashboard-nav-button ${isActive(item.path) ? 'active' : ''} ${item.id === 'admin' ? 'admin-button' : ''}`}
                   >
                     <item.icon className="dashboard-nav-icon" />
                     <span>{item.label}</span>
@@ -96,7 +104,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
             <button
               key={item.id}
               onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
-              className={`dashboard-mobile-nav-button ${isActive(item.path) ? 'active' : ''}`}
+              className={`dashboard-mobile-nav-button ${isActive(item.path) ? 'active' : ''} ${item.id === 'admin' ? 'admin-button' : ''}`}
             >
               <item.icon className="dashboard-mobile-nav-icon" />
               <span>{item.label}</span>

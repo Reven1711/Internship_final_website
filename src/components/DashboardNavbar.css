@@ -118,6 +118,30 @@
   box-shadow: 0 8px 20px rgba(58, 141, 202, 0.4);
 }
 
+/* Admin Button Styling */
+.dashboard-nav-button.admin-button {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.dashboard-nav-button.admin-button:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: #6d28d9;
+  border-color: rgba(109, 40, 217, 0.3);
+}
+
+.dashboard-nav-button.admin-button.active {
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.dashboard-nav-button.admin-button.active:hover {
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+}
+
 .dashboard-nav-icon {
   width: 1.1rem;
   height: 1.1rem;
@@ -226,14 +250,31 @@
 }
 
 .dashboard-mobile-nav-button.active {
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.1);
-  font-weight: 600;
+  background: linear-gradient(135deg, #3A8DCA, #174A7C);
+  color: white;
+}
+
+/* Mobile Admin Button Styling */
+.dashboard-mobile-nav-button.admin-button {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.dashboard-mobile-nav-button.admin-button:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: #6d28d9;
+}
+
+.dashboard-mobile-nav-button.admin-button.active {
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  color: white;
+  border-color: transparent;
 }
 
 .dashboard-mobile-nav-icon {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .dashboard-mobile-divider {

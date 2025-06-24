@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Phone, Pin, Building2, Edit, ChevronDown, ChevronUp, Plus, X, FileText, Download, Share2 } from 'lucide-react';
 import './Profile.css';
 import Popup from '../components/ui/Popup';
+import { useNavigate } from 'react-router-dom';
 
 // Rupee symbol component
 const RupeeIcon = ({ size = 16, className = "" }) => (
@@ -187,6 +188,67 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   ];
 
+  const [masterProductList, setMasterProductList] = useState<string[]>([]);
+
+  // Fetch master product list
+  useEffect(() => {
+    const fetchMasterProducts = async () => {
+      try {
+        const response = await fetch('/api/approved-chemicals');
+        if (response.ok) {
+          const data = await response.json();
+          setMasterProductList(data.chemicals || []);
+        } else {
+          console.error('Failed to fetch approved chemicals');
+          // Fallback to static list if API fails
+          setMasterProductList([
+            'Acetic Acid', 'Sulfuric Acid', 'Hydrochloric Acid', 'Sodium Hydroxide',
+            'Nitric Acid', 'Phosphoric Acid', 'Citric Acid', 'Oxalic Acid',
+            'Formic Acid', 'Lactic Acid', 'Tartaric Acid', 'Malic Acid',
+            'Potassium Hydroxide', 'Calcium Hydroxide', 'Ammonium Hydroxide',
+            'Sodium Carbonate', 'Potassium Carbonate', 'Calcium Carbonate',
+            'Sodium Bicarbonate', 'Potassium Bicarbonate', 'Ammonium Carbonate',
+            'Sodium Sulfate', 'Potassium Sulfate', 'Calcium Sulfate',
+            'Sodium Chloride', 'Potassium Chloride', 'Calcium Chloride',
+            'Sodium Nitrate', 'Potassium Nitrate', 'Calcium Nitrate',
+            'Sodium Phosphate', 'Potassium Phosphate', 'Calcium Phosphate',
+            'Sodium Acetate', 'Potassium Acetate', 'Calcium Acetate',
+            'Sodium Citrate', 'Potassium Citrate', 'Calcium Citrate',
+            'Sodium Oxalate', 'Potassium Oxalate', 'Calcium Oxalate',
+            'Sodium Formate', 'Potassium Formate', 'Calcium Formate',
+            'Sodium Lactate', 'Potassium Lactate', 'Calcium Lactate',
+            'Sodium Tartrate', 'Potassium Tartrate', 'Calcium Tartrate',
+            'Sodium Malate', 'Potassium Malate', 'Calcium Malate'
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching approved chemicals:', error);
+        // Fallback to static list if API fails
+        setMasterProductList([
+          'Acetic Acid', 'Sulfuric Acid', 'Hydrochloric Acid', 'Sodium Hydroxide',
+          'Nitric Acid', 'Phosphoric Acid', 'Citric Acid', 'Oxalic Acid',
+          'Formic Acid', 'Lactic Acid', 'Tartaric Acid', 'Malic Acid',
+          'Potassium Hydroxide', 'Calcium Hydroxide', 'Ammonium Hydroxide',
+          'Sodium Carbonate', 'Potassium Carbonate', 'Calcium Carbonate',
+          'Sodium Bicarbonate', 'Potassium Bicarbonate', 'Ammonium Carbonate',
+          'Sodium Sulfate', 'Potassium Sulfate', 'Calcium Sulfate',
+          'Sodium Chloride', 'Potassium Chloride', 'Calcium Chloride',
+          'Sodium Nitrate', 'Potassium Nitrate', 'Calcium Nitrate',
+          'Sodium Phosphate', 'Potassium Phosphate', 'Calcium Phosphate',
+          'Sodium Acetate', 'Potassium Acetate', 'Calcium Acetate',
+          'Sodium Citrate', 'Potassium Citrate', 'Calcium Citrate',
+          'Sodium Oxalate', 'Potassium Oxalate', 'Calcium Oxalate',
+          'Sodium Formate', 'Potassium Formate', 'Calcium Formate',
+          'Sodium Lactate', 'Potassium Lactate', 'Calcium Lactate',
+          'Sodium Tartrate', 'Potassium Tartrate', 'Calcium Tartrate',
+          'Sodium Malate', 'Potassium Malate', 'Calcium Malate'
+        ]);
+      }
+    };
+
+    fetchMasterProducts();
+  }, []);
+
   // Helper to normalize product names
   function normalizeName(name: string) {
     return name.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -305,6 +367,17 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       return;
     }
 
+    // Normalize for master list check
+    const normalizedMasterList = masterProductList.map(p => p.replace(/\s+/g, '').toLowerCase());
+    const normalizedInput = trimmedProductName.replace(/\s+/g, '').toLowerCase();
+    
+    if (!normalizedMasterList.includes(normalizedInput)) {
+      // Product not in master list - offer to submit as "Other Product" request
+      setAddProductWarning(`"${trimmedProductName}" is not in our database. Would you like to request it as an "Other Product"?`);
+      setAddProductError(''); // Clear any previous errors
+      return;
+    }
+
     try {
       setAddingProduct(true);
       setAddProductError(''); // Clear any previous errors
@@ -341,6 +414,49 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     } catch (error) {
       console.error('Error adding product:', error);
       setAddProductError('Failed to add product');
+    } finally {
+      setAddingProduct(false);
+    }
+  };
+
+  // New function to handle "Other Product" requests
+  const handleSubmitOtherProductRequest = async () => {
+    if (!newProductName.trim() || !user?.email) {
+      return;
+    }
+
+    try {
+      setAddingProduct(true);
+      setAddProductError('');
+      setAddProductWarning('');
+
+      const response = await fetch('/api/product-requests/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: user.email,
+          productName: newProductName.trim(),
+          description: `Product requested by ${user.email}`,
+          category: 'Chemical'
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Product request submitted successfully! Request ID: ${data.requestId}\n\nOur team will review your request and add it to the database if approved.`);
+        setNewProductName('');
+        setAddProductError('');
+        setAddProductWarning('');
+        setShowAddModal(false);
+      } else {
+        const errorData = await response.json();
+        setAddProductError(errorData.error || 'Failed to submit product request');
+      }
+    } catch (error) {
+      console.error('Error submitting product request:', error);
+      setAddProductError('Failed to submit product request');
     } finally {
       setAddingProduct(false);
     }
@@ -1377,13 +1493,36 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               >
                 Cancel
               </button>
-              <button 
-                className="modal-submit-btn"
-                onClick={handleAddProduct}
-                disabled={!newProductName.trim() || addingProduct || !!addProductError || !!addProductWarning}
-              >
-                {addingProduct ? 'Adding...' : 'Add Product'}
-              </button>
+              {addProductWarning && addProductWarning.includes('not in our database') ? (
+                // Show both buttons when product is not in master list
+                <>
+                  <button 
+                    className="modal-submit-btn"
+                    onClick={handleSubmitOtherProductRequest}
+                    disabled={!newProductName.trim() || addingProduct}
+                    style={{ backgroundColor: '#059669' }}
+                  >
+                    {addingProduct ? 'Submitting...' : 'Request as Other Product'}
+                  </button>
+                  <button 
+                    className="modal-submit-btn"
+                    onClick={handleAddProduct}
+                    disabled={!newProductName.trim() || addingProduct}
+                    style={{ backgroundColor: '#2563eb' }}
+                  >
+                    {addingProduct ? 'Adding...' : 'Add Anyway'}
+                  </button>
+                </>
+              ) : (
+                // Show single button for normal flow
+                <button 
+                  className="modal-submit-btn"
+                  onClick={handleAddProduct}
+                  disabled={!newProductName.trim() || addingProduct || !!addProductError}
+                >
+                  {addingProduct ? 'Adding...' : 'Add Product'}
+                </button>
+              )}
             </div>
           </div>
         </div>
