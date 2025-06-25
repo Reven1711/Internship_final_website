@@ -28,7 +28,7 @@ import ScrollToTop from './components/ScrollToTop';
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
   try {
-    const response = await fetch('http://localhost:5000/api/check-email', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/check-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -220,10 +220,9 @@ const App = () => {
   // Show loading state while auth is initializing
   if (!isAuthInitialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
         </div>
       </div>
     );

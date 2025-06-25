@@ -29,7 +29,7 @@ const Contact = () => {
 
     try {
       console.log('Submitting form data:', formData);
-      const response = await fetch('http://localhost:5000/api/send-email', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,9 +69,9 @@ const Contact = () => {
 
   const handleSocialClick = (platform: string) => {
     const socialLinks = {
-      instagram: 'https://www.instagram.com/sourceasy1/',
-      linkedin: 'https://www.linkedin.com/in/sourceasy-1-95400a370/',
-      facebook: 'https://www.facebook.com/profile.php?id=61577305686072'
+      instagram: 'https://www.instagram.com/sourceasy.ai/',
+      linkedin: 'https://www.linkedin.com/company/sourceasy-ai/about/',
+      facebook: 'https://www.facebook.com/profile.php?id=61577930453465&sk=about'
     };
     window.open(socialLinks[platform as keyof typeof socialLinks], '_blank');
   };

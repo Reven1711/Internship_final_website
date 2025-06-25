@@ -1,73 +1,97 @@
-# Welcome to your Lovable project
+# Sourceasy - Chemical Trading Platform
 
-## Project info
+A modern web application for chemical trading with AI-powered moderation and supplier management.
 
-**URL**: https://lovable.dev/projects/5b00f889-14f4-4219-a303-f1c0d4535076
+## 🚀 Quick Start
 
-## How can I edit this code?
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables (see Security section below)
+4. Start the development server: `npm run dev`
 
-There are several ways of editing your application.
+## 🔒 Security Configuration
 
-**Use Lovable**
+### Frontend Environment Variables
+Create a `.env` file in the root directory with the following variables:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5b00f889-14f4-4219-a303-f1c0d4535076) and start prompting.
+```env
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your_firebase_api_key_here
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
-Changes made via Lovable will be committed automatically to this repo.
+# API Configuration
+VITE_API_BASE_URL=http://localhost:5000
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Admin Configuration
+VITE_ADMIN_EMAILS=meet.r@ahduni.edu.in,jay.r1@ahduni.edu.in
 ```
 
-**Edit a file directly in GitHub**
+### Backend Environment Variables
+Create a `.env` file in the `backend` directory with the following variables:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```env
+# Pinecone Configuration
+PINECONE_API_KEY=your_pinecone_api_key_here
+PINECONE_INDEX_NAME=chemical-frontend
 
-**Use GitHub Codespaces**
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key_here
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Email Configuration (Gmail)
+EMAIL_USER=your_gmail_address@gmail.com
+EMAIL_PASS=your_gmail_app_password
 
-## What technologies are used for this project?
+# Admin Configuration
+ADMIN_EMAILS=meet.r@ahduni.edu.in,jay.r1@ahduni.edu.in
 
-This project is built with:
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Security Notes
+- **Never commit `.env` files** - they are already in `.gitignore`
+- **Use Gmail App Passwords** for email authentication, not your regular password
+- **Rotate API keys regularly** for production environments
+- **Use HTTPS in production** for all API communications
+- **Validate admin emails** through environment variables, not hardcoded values
 
-## How can I deploy this project?
+## Features
 
-Simply open [Lovable](https://lovable.dev/projects/5b00f889-14f4-4219-a303-f1c0d4535076) and click on Share -> Publish.
+- 🔐 Secure authentication with Firebase
+- 🤖 AI-powered content moderation
+- 📊 Supplier and product management
+- 📧 Email notifications
+- 👥 Admin dashboard
+- 📱 Responsive design
 
-## Can I connect a custom domain to my Lovable project?
+## Tech Stack
 
-Yes, you can!
+- **Frontend**: React, TypeScript, Vite
+- **Backend**: Node.js, Express
+- **Database**: Pinecone (vector database)
+- **Authentication**: Firebase Auth
+- **AI**: OpenAI GPT for moderation
+- **Email**: Nodemailer with Gmail
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Development
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+## Backend Setup
+
+See the [backend README](./backend/README.md) for detailed backend setup instructions.

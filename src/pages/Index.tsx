@@ -79,13 +79,26 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
     // Cross-page section scroll support
     const sectionId = sessionStorage.getItem('scrollToSection');
     if (sectionId) {
-      setTimeout(() => {
+      const scrollToSection = (retryCount = 0) => {
         const section = document.getElementById(sectionId);
         if (section) {
-          section.scrollIntoView({ behavior: 'smooth' });
+          // Add a small delay to ensure all components are rendered
+          setTimeout(() => {
+            section.scrollIntoView({ behavior: 'smooth' });
+            sessionStorage.removeItem('scrollToSection');
+          }, 300);
+        } else if (retryCount < 10) {
+          // Retry if section is not found yet
+          setTimeout(() => {
+            scrollToSection(retryCount + 1);
+          }, 100);
+        } else {
+          console.warn(`Section '${sectionId}' not found after retries`);
+          sessionStorage.removeItem('scrollToSection');
         }
-        sessionStorage.removeItem('scrollToSection');
-      }, 300);
+      };
+      
+      scrollToSection();
     }
   }, []);
 

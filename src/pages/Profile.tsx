@@ -69,6 +69,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState('');
   const [addProductWarning, setAddProductWarning] = useState('');
+  const [addProductSuccess, setAddProductSuccess] = useState('');
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -90,6 +91,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   }]);
   const [addingSellProduct, setAddingSellProduct] = useState(false);
   const [sellLoading, setSellLoading] = useState(false);
+  const [sellProductSuccess, setSellProductSuccess] = useState('');
+  const [sellProductError, setSellProductError] = useState('');
 
   // Edit and delete sell products state
   const [editingSellProduct, setEditingSellProduct] = useState<any>(null);
@@ -390,7 +393,13 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setNewProductName('');
         setAddProductError('');
         setAddProductWarning('');
-        setShowAddModal(false);
+        setAddProductSuccess('Product Added Successfully!');
+        
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          setShowAddModal(false);
+          setAddProductSuccess('');
+        }, 2000);
       } else {
         const errorData = await response.json();
         setAddProductError(errorData.error || 'Failed to add product');
@@ -549,7 +558,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         // Refresh the sell products list
         await fetchSellProducts();
         
-        setShowAddSellModal(false);
+        setSellProductSuccess(`Successfully added ${data.count} product(s)!`);
+        
+        // Reset form
         setSellProductForm([{
           productName: '',
           productCategory: 'Pharmaceutical',
@@ -559,7 +570,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           customUnit: ''
         }]);
         
-        alert(`Successfully added ${data.count} product(s)!`);
+        // Close modal after 3 seconds
+        setTimeout(() => {
+          setShowAddSellModal(false);
+          setSellProductSuccess('');
+          setSellProductError('');
+        }, 3000);
         
         // Store current tab before reloading
         sessionStorage.setItem('profileActiveTab', tab);
@@ -567,14 +583,14 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         window.location.reload();
       } else {
         if (data.duplicates && data.duplicates.length > 0) {
-          alert(`Some products already exist: ${data.duplicates.join(', ')}`);
+          setSellProductError(`Some products already exist: ${data.duplicates.join(', ')}`);
         } else {
-          alert(data.error || 'Failed to add products');
+          setSellProductError(data.error || 'Failed to add products');
         }
       }
     } catch (error) {
       console.error('Error adding sell products:', error);
-      alert('Failed to add products');
+      setSellProductError('Failed to add products');
     } finally {
       setAddingSellProduct(false);
     }
@@ -881,7 +897,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 />
                 <button 
                   className="add-product-btn"
-                  onClick={() => setShowAddSellModal(true)}
+                  onClick={() => {
+                    setShowAddSellModal(true);
+                    setSellProductSuccess('');
+                    setSellProductError('');
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1507,12 +1527,28 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   setShowAddModal(false);
                   setAddProductError('');
                   setAddProductWarning('');
+                  setAddProductSuccess('');
                 }}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="modal-body">
+              {addProductSuccess && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  border: '1px solid #10b981',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {addProductSuccess}
+                </div>
+              )}
+              
               <label htmlFor="productName">Chemical Name:</label>
               <input
                 id="productName"
@@ -1524,6 +1560,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   
                   if (addProductError) setAddProductError('');
                   if (addProductWarning) setAddProductWarning('');
+                  if (addProductSuccess) setAddProductSuccess('');
                   
                   // Check for duplicates in real-time (normalized)
                   const trimmedValue = value.trim();
@@ -1561,9 +1598,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   setShowAddModal(false);
                   setAddProductError('');
                   setAddProductWarning('');
+                  setAddProductSuccess('');
                 }}
               >
-                Cancel
+                {addProductSuccess ? 'Close' : 'Cancel'}
               </button>
               {addProductWarning && addProductWarning.includes('not in our database') ? (
                 // Show both buttons when product is not in master list
@@ -1571,7 +1609,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   <button 
                     className="modal-submit-btn"
                     onClick={handleSubmitOtherProductRequest}
-                    disabled={!newProductName.trim() || addingProduct}
+                    disabled={!newProductName.trim() || addingProduct || !!addProductSuccess}
                     style={{ backgroundColor: '#059669' }}
                   >
                     {addingProduct ? 'Submitting...' : 'Request as Other Product'}
@@ -1579,7 +1617,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   <button 
                     className="modal-submit-btn"
                     onClick={handleAddProduct}
-                    disabled={!newProductName.trim() || addingProduct}
+                    disabled={!newProductName.trim() || addingProduct || !!addProductSuccess}
                     style={{ backgroundColor: '#2563eb' }}
                   >
                     {addingProduct ? 'Adding...' : 'Add Anyway'}
@@ -1590,7 +1628,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <button 
                   className="modal-submit-btn"
                   onClick={handleAddProduct}
-                  disabled={!newProductName.trim() || addingProduct || !!addProductError}
+                  disabled={!newProductName.trim() || addingProduct || !!addProductError || !!addProductSuccess}
                 >
                   {addingProduct ? 'Adding...' : 'Add Product'}
                 </button>
@@ -1608,12 +1646,46 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <h3>Register Products</h3>
               <button 
                 className="modal-close-btn"
-                onClick={() => setShowAddSellModal(false)}
+                onClick={() => {
+                  setShowAddSellModal(false);
+                  setSellProductSuccess('');
+                  setSellProductError('');
+                }}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="modal-body">
+              {sellProductSuccess && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  border: '1px solid #10b981',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {sellProductSuccess}
+                </div>
+              )}
+              
+              {sellProductError && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #ef4444',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {sellProductError}
+                </div>
+              )}
+              
               <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, marginBottom: '2rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
                 <thead>
                   <tr style={{ background: 'linear-gradient(to right, #1A3556, #5DA8E0)', color: 'white' }}>
@@ -1743,19 +1815,24 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   backgroundColor: '#5DA8E0',
                   marginRight: '12px'
                 }}
+                disabled={!!sellProductSuccess}
               >
                 + Add More
               </button>
               <button 
                 className="modal-cancel-btn"
-                onClick={() => setShowAddSellModal(false)}
+                onClick={() => {
+                  setShowAddSellModal(false);
+                  setSellProductSuccess('');
+                  setSellProductError('');
+                }}
               >
-                Cancel
+                {sellProductSuccess ? 'Close' : 'Cancel'}
               </button>
               <button 
                 className="modal-submit-btn"
                 onClick={handleSubmitSellProducts}
-                disabled={addingSellProduct}
+                disabled={addingSellProduct || !!sellProductSuccess}
               >
                 {addingSellProduct ? 'Adding...' : 'Done'}
               </button>

@@ -44,47 +44,61 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
 
   const scrollToSection = (sectionId: string) => {
     setIsMobileMenuOpen(false);
-    const section = document.getElementById(sectionId);
-    if (section) {
-      // Get all sections
-      const allSections = gsap.utils.toArray('.animate-section');
-      const targetIndex = allSections.indexOf(section);
-      
-      // Scroll to the target section
-      section.scrollIntoView({ behavior: 'smooth' });
+    
+    const findAndScrollToSection = (retryCount = 0) => {
+      const section = document.getElementById(sectionId);
+      if (section) {
+        // Get all sections
+        const allSections = gsap.utils.toArray('.animate-section');
+        const targetIndex = allSections.indexOf(section);
+        
+        // Scroll to the target section
+        section.scrollIntoView({ behavior: 'smooth' });
 
-      // Animate all sections up to and including the target
-      requestAnimationFrame(() => {
-        allSections.forEach((section: any, index: number) => {
-          if (index <= targetIndex) {
-            gsap.to(section, {
-              opacity: 1,
-              y: 0,
-              duration: 0.8,
-              ease: "power3.out",
-              overwrite: true,
-              onComplete: () => {
-                // Refresh ScrollTrigger after animation completes
-                ScrollTrigger.refresh(true);
-              }
-            });
-
-            // Also animate any child elements that need it
-            const childElements = section.querySelectorAll('.section-title, .animate-element');
-            childElements.forEach((element: any) => {
-              gsap.to(element, {
+        // Animate all sections up to and including the target
+        requestAnimationFrame(() => {
+          allSections.forEach((section: any, index: number) => {
+            if (index <= targetIndex) {
+              gsap.to(section, {
                 opacity: 1,
                 y: 0,
-                duration: 0.6,
+                duration: 0.8,
                 ease: "power3.out",
                 overwrite: true,
-                delay: 0.2
+                onComplete: () => {
+                  // Refresh ScrollTrigger after animation completes
+                  ScrollTrigger.refresh(true);
+                }
               });
-            });
-          }
+
+              // Also animate any child elements that need it
+              const childElements = section.querySelectorAll('.section-title, .animate-element');
+              childElements.forEach((element: any) => {
+                gsap.to(element, {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.6,
+                  ease: "power3.out",
+                  overwrite: true,
+                  delay: 0.2
+                });
+              });
+            }
+          });
         });
-      });
-    }
+      } else if (retryCount < 5) {
+        // Retry after a short delay if section is not found
+        setTimeout(() => {
+          findAndScrollToSection(retryCount + 1);
+        }, 200);
+      } else {
+        // Fallback: scroll to top if section is not found after retries
+        console.warn(`Section with id '${sectionId}' not found, scrolling to top`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    findAndScrollToSection();
   };
 
   const toggleMobileMenu = () => {
@@ -102,7 +116,10 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
       sessionStorage.setItem('scrollToSection', sectionId);
       window.location.href = '/';
     } else {
-      scrollToSection(sectionId);
+      // Add a small delay to ensure the page is fully rendered
+      setTimeout(() => {
+        scrollToSection(sectionId);
+      }, 100);
     }
   };
 

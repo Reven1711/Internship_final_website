@@ -14,8 +14,12 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check if user is admin
-  const isAdmin = user?.email === 'meet.r@ahduni.edu.in' || user?.email === 'jay.r1@ahduni.edu.in';
+  // Check if user is admin based on environment variable
+  const adminEmails = import.meta.env.VITE_ADMIN_EMAILS ? 
+    import.meta.env.VITE_ADMIN_EMAILS.split(',') : 
+    ['meet.r@ahduni.edu.in', 'jay.r1@ahduni.edu.in']; // Fallback for development
+  
+  const isAdmin = user?.email && adminEmails.includes(user.email);
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/dashboard' },
