@@ -18,7 +18,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:8080", // Updated to match your frontend URL
+    origin: process.env.CORS_ORIGIN || "http://localhost:6006",
     methods: ["POST", "GET"],
     credentials: true,
   })
