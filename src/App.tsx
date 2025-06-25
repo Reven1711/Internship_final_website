@@ -24,11 +24,12 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
+import { buildApiUrl } from './lib/config';
 
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/check-email`, {
+    const response = await fetch(buildApiUrl('/api/check-email'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

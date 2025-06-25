@@ -3,6 +3,7 @@ import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Pho
 import './Profile.css';
 import Popup from '../components/ui/Popup';
 import { useNavigate } from 'react-router-dom';
+import { buildApiUrl } from '../lib/config';
 
 // Rupee symbol component
 const RupeeIcon = ({ size = 16, className = "" }) => (
@@ -97,6 +98,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Edit and delete sell products state
   const [editingSellProduct, setEditingSellProduct] = useState<any>(null);
   const [deletingSellProduct, setDeletingSellProduct] = useState<string | null>(null);
+  const [editProductSuccess, setEditProductSuccess] = useState(false);
+  const [editProductError, setEditProductError] = useState('');
+  const [updatingProduct, setUpdatingProduct] = useState(false);
 
   // History section state
   const [historyTab, setHistoryTab] = useState<'inquiry' | 'quotation'>('inquiry');
@@ -122,7 +126,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   useEffect(() => {
     const fetchMasterProducts = async () => {
       try {
-        const response = await fetch('/api/approved-chemicals');
+        const response = await fetch(buildApiUrl('/api/approved-chemicals'));
         if (response.ok) {
           const data = await response.json();
           setMasterProductList(data.chemicals || []);
@@ -188,7 +192,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setBuyLoading(true);
-      const response = await fetch(`/api/buy-products/${encodeURIComponent(user.email)}`);
+      const response = await fetch(buildApiUrl(`/api/buy-products/${encodeURIComponent(user.email)}`));
       const data = await response.json();
 
       if (response.ok) {
@@ -211,7 +215,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setSellLoading(true);
-      const response = await fetch('/api/suppliers/email', {
+      const response = await fetch(buildApiUrl('/api/suppliers/email'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -240,7 +244,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setProfileLoading(true);
-      const response = await fetch(`/api/profile/${encodeURIComponent(user.email)}`);
+      const response = await fetch(buildApiUrl(`/api/profile/${encodeURIComponent(user.email)}`));
       if (response.ok) {
         const data = await response.json();
         setProfileData(data.profile);
@@ -272,7 +276,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setQuotationLoading(true);
-      const response = await fetch(`/api/quotations/${encodeURIComponent(phoneNumber)}`);
+      const response = await fetch(buildApiUrl(`/api/quotations/${encodeURIComponent(phoneNumber)}`));
       const data = await response.json();
 
       console.log('Quotations API response:', data);
@@ -308,7 +312,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setInquiryLoading(true);
-      const response = await fetch(`/api/inquiries/${encodeURIComponent(phoneNumber)}`);
+      const response = await fetch(buildApiUrl(`/api/inquiries/${encodeURIComponent(phoneNumber)}`));
       const data = await response.json();
 
       console.log('Inquiries API response:', data);
@@ -377,7 +381,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddingProduct(true);
       setAddProductError('');
       setAddProductWarning('');
-      const response = await fetch('/api/buy-products/add', {
+      const response = await fetch(buildApiUrl('/api/buy-products/add'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -422,7 +426,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddProductError('');
       setAddProductWarning('');
 
-      const response = await fetch('/api/product-requests/submit', {
+      const response = await fetch(buildApiUrl('/api/product-requests/submit'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -459,7 +463,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     if (!user?.email) return;
 
     try {
-      const response = await fetch('/api/buy-products/remove', {
+      const response = await fetch(buildApiUrl('/api/buy-products/remove'), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -541,7 +545,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddingSellProduct(true);
       
       // Call backend API to add products (only valid ones)
-      const response = await fetch('/api/sell-products/add', {
+      const response = await fetch(buildApiUrl('/api/sell-products/add'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -606,6 +610,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       minimumOrderQuantity: product.minimumOrderQuantity,
       productUnit: product.productUnit
     });
+    setEditProductSuccess(false);
+    setEditProductError('');
+    setUpdatingProduct(false);
   };
 
   // Update sell product
@@ -613,7 +620,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     if (!editingSellProduct) return;
 
     try {
-      const response = await fetch('/api/sell-products/update', {
+      setUpdatingProduct(true);
+      setEditProductError('');
+      
+      const response = await fetch(buildApiUrl('/api/sell-products/update'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -629,19 +639,16 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       if (response.ok) {
         // Refresh the sell products list
         await fetchSellProducts();
-        setEditingSellProduct(null);
-        alert('Product updated successfully!');
-        
-        // Store current tab before reloading
-        sessionStorage.setItem('profileActiveTab', tab);
-        // Reload the page to show changes
-        window.location.reload();
+        setEditProductSuccess(true);
+        setEditProductError('');
       } else {
-        alert(data.error || 'Failed to update product');
+        setEditProductError(data.error || 'Failed to update product');
       }
     } catch (error) {
       console.error('Error updating sell product:', error);
-      alert('Failed to update product');
+      setEditProductError('Failed to update product');
+    } finally {
+      setUpdatingProduct(false);
     }
   };
 
@@ -651,7 +658,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setDeletingSellProduct(productId);
-      const response = await fetch('/api/sell-products/delete', {
+      const response = await fetch(buildApiUrl('/api/sell-products/delete'), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -1855,101 +1862,144 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               </button>
             </div>
             <div className="modal-body">
-              <label htmlFor="editProductName">Product Name:</label>
-              <input
-                id="editProductName"
-                type="text"
-                value={editingSellProduct.productName}
-                onChange={(e) => setEditingSellProduct({
-                  ...editingSellProduct,
-                  productName: e.target.value
-                })}
-                className="modal-input"
-                placeholder="Product name"
-              />
-              
-              <label htmlFor="editProductCategory">Category:</label>
-              <select
-                id="editProductCategory"
-                value={editingSellProduct.productCategory}
-                onChange={(e) => setEditingSellProduct({
-                  ...editingSellProduct,
-                  productCategory: e.target.value
-                })}
-                className="modal-input"
-              >
-                <option value="Pharmaceutical">Pharmaceutical</option>
-                <option value="Industrial">Industrial</option>
-                <option value="Agrochemical">Agrochemical</option>
-                <option value="Laboratory">Laboratory</option>
-              </select>
-              
-              <label htmlFor="editProductDescription">Description:</label>
-              <textarea
-                id="editProductDescription"
-                value={editingSellProduct.productDescription}
-                onChange={(e) => setEditingSellProduct({
-                  ...editingSellProduct,
-                  productDescription: e.target.value
-                })}
-                className="modal-input"
-                placeholder="Product description"
-                rows={3}
-              />
-              
-              <label htmlFor="editMinimumQuantity">Minimum Order Quantity:</label>
-              <input
-                id="editMinimumQuantity"
-                type="number"
-                value={editingSellProduct.minimumOrderQuantity}
-                onChange={(e) => setEditingSellProduct({
-                  ...editingSellProduct,
-                  minimumOrderQuantity: parseInt(e.target.value) || 0
-                })}
-                className="modal-input"
-                placeholder="Minimum quantity"
-                min="1"
-              />
-              
-              <label htmlFor="editProductUnit">Unit:</label>
-              <select
-                id="editProductUnit"
-                value={editingSellProduct.productUnit}
-                onChange={(e) => setEditingSellProduct({
-                  ...editingSellProduct,
-                  productUnit: e.target.value
-                })}
-                className="modal-input"
-              >
-                <option value="Piece">Piece</option>
-                <option value="Dozen">Dozen</option>
-                <option value="Unit">Unit</option>
-                <option value="Cm">Cm</option>
-                <option value="Inch">Inch</option>
-                <option value="Feet">Feet</option>
-                <option value="Meter">Meter</option>
-                <option value="Gram">Gram</option>
-                <option value="Kg">Kg</option>
-                <option value="Tonne">Tonne</option>
-                <option value="Mtonne">Mtonne</option>
-                <option value="Litre">Litre</option>
-              </select>
+              {editProductSuccess ? (
+                <div className="success-message">
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <div style={{ fontSize: '48px', color: '#10b981', marginBottom: '16px' }}>✓</div>
+                    <h3 style={{ color: '#10b981', marginBottom: '8px' }}>Product Successfully Changed!</h3>
+                    <p style={{ color: '#6b7280', marginBottom: '20px' }}>Your product has been updated successfully.</p>
+                    <button 
+                      className="modal-submit-btn"
+                      onClick={() => {
+                        setEditingSellProduct(null);
+                        setEditProductSuccess(false);
+                        setEditProductError('');
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {editProductError && (
+                    <div className="error-message" style={{ 
+                      backgroundColor: '#fef2f2', 
+                      border: '1px solid #fecaca', 
+                      color: '#dc2626', 
+                      padding: '12px', 
+                      borderRadius: '6px', 
+                      marginBottom: '16px',
+                      fontSize: '14px'
+                    }}>
+                      {editProductError}
+                    </div>
+                  )}
+                  
+                  <label htmlFor="editProductName">Product Name:</label>
+                  <input
+                    id="editProductName"
+                    type="text"
+                    value={editingSellProduct.productName}
+                    onChange={(e) => setEditingSellProduct({
+                      ...editingSellProduct,
+                      productName: e.target.value
+                    })}
+                    className="modal-input"
+                    placeholder="Product name"
+                  />
+                  
+                  <label htmlFor="editProductCategory">Category:</label>
+                  <select
+                    id="editProductCategory"
+                    value={editingSellProduct.productCategory}
+                    onChange={(e) => setEditingSellProduct({
+                      ...editingSellProduct,
+                      productCategory: e.target.value
+                    })}
+                    className="modal-input"
+                  >
+                    <option value="Pharmaceutical">Pharmaceutical</option>
+                    <option value="Industrial">Industrial</option>
+                    <option value="Agrochemical">Agrochemical</option>
+                    <option value="Laboratory">Laboratory</option>
+                  </select>
+                  
+                  <label htmlFor="editProductDescription">Description:</label>
+                  <textarea
+                    id="editProductDescription"
+                    value={editingSellProduct.productDescription}
+                    onChange={(e) => setEditingSellProduct({
+                      ...editingSellProduct,
+                      productDescription: e.target.value
+                    })}
+                    className="modal-input"
+                    placeholder="Product description"
+                    rows={3}
+                  />
+                  
+                  <label htmlFor="editMinimumQuantity">Minimum Order Quantity:</label>
+                  <input
+                    id="editMinimumQuantity"
+                    type="number"
+                    value={editingSellProduct.minimumOrderQuantity}
+                    onChange={(e) => setEditingSellProduct({
+                      ...editingSellProduct,
+                      minimumOrderQuantity: parseInt(e.target.value) || 0
+                    })}
+                    className="modal-input"
+                    placeholder="Minimum quantity"
+                    min="1"
+                  />
+                  
+                  <label htmlFor="editProductUnit">Unit:</label>
+                  <select
+                    id="editProductUnit"
+                    value={editingSellProduct.productUnit}
+                    onChange={(e) => setEditingSellProduct({
+                      ...editingSellProduct,
+                      productUnit: e.target.value
+                    })}
+                    className="modal-input"
+                  >
+                    <option value="Piece">Piece</option>
+                    <option value="Dozen">Dozen</option>
+                    <option value="Unit">Unit</option>
+                    <option value="Cm">Cm</option>
+                    <option value="Inch">Inch</option>
+                    <option value="Feet">Feet</option>
+                    <option value="Meter">Meter</option>
+                    <option value="Gram">Gram</option>
+                    <option value="Kg">Kg</option>
+                    <option value="Tonne">Tonne</option>
+                    <option value="Mtonne">Mtonne</option>
+                    <option value="Litre">Litre</option>
+                  </select>
+                </>
+              )}
             </div>
-            <div className="modal-footer">
-              <button 
-                className="modal-cancel-btn"
-                onClick={() => setEditingSellProduct(null)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="modal-submit-btn"
-                onClick={handleUpdateSellProduct}
-                disabled={!editingSellProduct.productName.trim()}
-              >
-                Update Product
-              </button>
-            </div>
+            {!editProductSuccess && (
+              <div className="modal-footer">
+                <button 
+                  className="modal-cancel-btn"
+                  onClick={() => {
+                    setEditingSellProduct(null);
+                    setEditProductSuccess(false);
+                    setEditProductError('');
+                  }}
+                  disabled={updatingProduct}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="modal-submit-btn"
+                  onClick={handleUpdateSellProduct}
+                  disabled={!editingSellProduct.productName.trim() || updatingProduct}
+                >
+                  {updatingProduct ? 'Updating...' : 'Update Product'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
