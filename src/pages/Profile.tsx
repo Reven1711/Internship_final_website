@@ -353,10 +353,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   // Add new product function
   const handleAddProduct = async () => {
-    console.log("handleAddProduct called with:", { newProductName, userEmail: user?.email });
-    
     if (!newProductName.trim() || !user?.email) {
-      console.log("Validation failed:", { newProductName: newProductName.trim(), userEmail: user?.email });
+      setAddProductError('Please enter a product name.');
       return;
     }
 
@@ -372,23 +370,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       return;
     }
 
-    // Normalize for master list check
-    const normalizedMasterList = masterProductList.map(p => p.replace(/\s+/g, '').toLowerCase());
-    const normalizedInput = trimmedProductName.replace(/\s+/g, '').toLowerCase();
-    
-    if (!normalizedMasterList.includes(normalizedInput)) {
-      // Product not in master list - offer to submit as "Other Product" request
-      setAddProductWarning(`"${trimmedProductName}" is not in our database. Would you like to request it as an "Other Product"?`);
-      setAddProductError(''); // Clear any previous errors
-      return;
-    }
-
     try {
       setAddingProduct(true);
-      setAddProductError(''); // Clear any previous errors
+      setAddProductError('');
       setAddProductWarning('');
-      console.log("Making API call to add product:", { email: user.email, productName: trimmedProductName });
-      
       const response = await fetch('/api/buy-products/add', {
         method: 'POST',
         headers: {
@@ -399,13 +384,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           productName: trimmedProductName 
         }),
       });
-
-      console.log("Add product response status:", response.status);
-      console.log("Add product response ok:", response.ok);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("Add product success data:", data);
         setBuyProducts(data.products);
         setNewProductName('');
         setAddProductError('');
@@ -413,11 +393,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setShowAddModal(false);
       } else {
         const errorData = await response.json();
-        console.error("Add product error:", errorData);
         setAddProductError(errorData.error || 'Failed to add product');
       }
     } catch (error) {
-      console.error('Error adding product:', error);
       setAddProductError('Failed to add product');
     } finally {
       setAddingProduct(false);

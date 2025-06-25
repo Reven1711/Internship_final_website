@@ -21,6 +21,12 @@ EMAIL_PASS=your-app-password
 PINECONE_API_KEY=your-pinecone-api-key
 PINECONE_INDEX_NAME=chemical-frontend
 
+# OpenAI Configuration
+OPENAI_API_KEY=your-openai-api-key
+
+# Admin Configuration
+ADMIN_EMAILS=admin1@example.com,admin2@example.com
+
 # Server Configuration
 PORT=5000
 ```
@@ -36,6 +42,14 @@ PORT=5000
 
 - `PINECONE_API_KEY`: Your Pinecone API key
 - `PINECONE_INDEX_NAME`: The name of your Pinecone index (default: "chemical-frontend")
+
+### OpenAI Configuration
+
+- `OPENAI_API_KEY`: Your OpenAI API key for AI moderation
+
+### Admin Configuration
+
+- `ADMIN_EMAILS`: Comma-separated list of admin email addresses that can access the admin dashboard
 
 ### Server Configuration
 

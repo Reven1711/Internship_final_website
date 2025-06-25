@@ -3,6 +3,7 @@ const cors = require("cors");
 const nodemailer = require("nodemailer");
 const { Pinecone } = require("@pinecone-database/pinecone");
 require("dotenv").config();
+const OpenAI = require("openai");
 
 const app = express();
 
@@ -10,6 +11,9 @@ const app = express();
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,
 });
+
+// Initialize OpenAI
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Middleware
 app.use(
@@ -275,43 +279,72 @@ app.post("/api/buy-products/add", async (req, res) => {
   try {
     const { email, productName } = req.body;
 
-    console.log("Adding product request:", { email, productName });
-
     if (!email || !productName) {
-      return res
-        .status(400)
-        .json({ error: "Email and product name are required" });
+      return res.status(400).json({ error: "Email and product name are required" });
+    }
+
+    // AI Moderation
+    const prompt = `You are a content moderator for a chemical trading platform. Analyze the following product name and determine if it contains:
+
+1. Abusive language, slurs, or offensive terms in ANY language (English, Hindi, Gujarati, Marathi, Bengali, Tamil, Telugu, Kannada, Malayalam, Punjabi, Urdu, etc.)
+2. Irrelevant or nonsense words that are not real chemical names
+3. Inappropriate content or profanity in any script or language
+
+Examples of what to BLOCK:
+- Slurs in Hindi/Gujarati (like "ghadedo", "harami", "chutiya", etc.)
+- Random words that are not chemicals
+- Abusive terms in any Indian language
+- Nonsense or made-up words
+
+Examples of what to ALLOW:
+- Real chemical names (Acetic Acid, Sulfuric Acid, etc.)
+- Chemical formulas (H2SO4, NaOH, etc.)
+- Common chemical terms in any language
+
+Product name to analyze: "${productName}"
+
+Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOWED).`;
+
+    let aiApproved = false;
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are a strict content moderator for a chemical trading platform. You must detect abusive language, slurs, and inappropriate content in ALL languages including Hindi, Gujarati, and other Indian languages. Only respond with 'Yes' (block) or 'No' (allow)." },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 3,
+        temperature: 0,
+      });
+      const aiResponse = completion.choices[0].message.content.trim().toLowerCase();
+      aiApproved = aiResponse.startsWith("no");
+      console.log(`AI Moderation for "${productName}": ${aiResponse} (Approved: ${aiApproved})`);
+    } catch (error) {
+      console.error("Error in OpenAI moderation:", error);
+      return res.status(500).json({ error: "AI moderation failed. Please try again later." });
+    }
+
+    if (!aiApproved) {
+      return res.status(400).json({ error: "Product name was blocked by AI moderation as abusive, irrelevant, or nonsense." });
     }
 
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
-
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
     const dummyVector = new Array(1024).fill(0);
     dummyVector[0] = 1;
 
     // First, check if user already has a record in the "products" namespace
     const queryResponse = await index.namespace("products").query({
       vector: dummyVector,
-      filter: {
-        email: { $eq: email },
-      },
+      filter: { email: { $eq: email } },
       topK: 1,
       includeMetadata: true,
     });
 
-    console.log(
-      "Query response for existing record:",
-      JSON.stringify(queryResponse, null, 2)
-    );
-
     let existingProducts = [];
     let recordId = null;
-
     if (queryResponse.matches && queryResponse.matches.length > 0) {
-      // User already has products, update existing record
       const metadata = queryResponse.matches[0].metadata;
-      // Support both array and string for productList
       if (Array.isArray(metadata.productList)) {
         existingProducts = metadata.productList;
       } else if (typeof metadata.productList === "string") {
@@ -320,40 +353,22 @@ app.post("/api/buy-products/add", async (req, res) => {
         existingProducts = [];
       }
       recordId = queryResponse.matches[0].id;
-      console.log("Found existing products:", existingProducts);
-    } else {
-      console.log("No existing record found, will create new one");
     }
 
     // Check if product already exists (case-insensitive, normalized)
     const normalizedNew = normalizeName(productName);
     const productExists = existingProducts.some((existingProduct) => {
       const normalizedExisting = normalizeName(existingProduct);
-      const match = normalizedExisting === normalizedNew;
-      console.log(
-        `Comparing "${normalizedExisting}" with "${normalizedNew}" -> ${match}`
-      );
-      return match;
+      return normalizedExisting === normalizedNew;
     });
-
-    console.log("Product exists:", productExists);
-
     if (productExists) {
-      return res.status(400).json({
-        error: "Product already exists in your list",
-      });
+      return res.status(400).json({ error: "Product already exists in your list" });
     }
 
     // Add new product
     existingProducts.push(productName);
-    console.log("Updated products list:", existingProducts);
-
     if (recordId) {
-      // Delete existing record and recreate with updated data
-      console.log("Deleting existing record with ID:", recordId);
       await index.namespace("products").deleteOne(recordId);
-
-      console.log("Creating updated record with ID:", recordId);
       await index.namespace("products").upsert([
         {
           id: recordId,
@@ -367,9 +382,7 @@ app.post("/api/buy-products/add", async (req, res) => {
         },
       ]);
     } else {
-      // Create new record in the "products" namespace
       const newId = `buy_products_${Date.now()}`;
-      console.log("Creating new record with ID:", newId);
       await index.namespace("products").upsert([
         {
           id: newId,
@@ -384,11 +397,28 @@ app.post("/api/buy-products/add", async (req, res) => {
       ]);
     }
 
-    console.log("Successfully saved products:", existingProducts);
+    // Add to unapproved_chemicals for admin review
+    const chemicalsIndex = pinecone.index("chemicals-new");
+    const chemicalsDummyVector = new Array(1536).fill(0);
+    chemicalsDummyVector[0] = 1;
+    const unapprovedId = `unapproved_${Date.now()}`;
+    await chemicalsIndex.namespace("unapproved_chemicals").upsert([
+      {
+        id: unapprovedId,
+        values: chemicalsDummyVector,
+        metadata: {
+          name: productName,
+          email: email,
+          submittedAt: new Date().toISOString(),
+          status: "pending",
+          aiVerified: true,
+        },
+      },
+    ]);
 
     res.status(200).json({
       success: true,
-      message: "Product added successfully",
+      message: "Product added and submitted for admin approval.",
       products: existingProducts,
       count: existingProducts.length,
     });
@@ -899,10 +929,10 @@ app.post("/api/product-requests/submit", async (req, res) => {
 app.get("/api/unapproved-chemicals/pending", async (req, res) => {
   try {
     const { adminEmail } = req.query;
+    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
     if (
       !adminEmail ||
-      (adminEmail !== "meet.r@ahduni.edu.in" &&
-        adminEmail !== "jay.r1@ahduni.edu.in")
+      !adminEmails.includes(adminEmail)
     ) {
       return res
         .status(403)
@@ -919,7 +949,7 @@ app.get("/api/unapproved-chemicals/pending", async (req, res) => {
     });
     const pendingRequests =
       queryResponse.matches?.map((match) => ({
-        id: match.metadata.id,
+        id: match.id,
         name: match.metadata.name,
         email: match.metadata.email,
         status: match.metadata.status,
@@ -943,33 +973,45 @@ app.get("/api/unapproved-chemicals/pending", async (req, res) => {
 app.post("/api/unapproved-chemicals/approve", async (req, res) => {
   try {
     const { adminEmail, id } = req.body;
-    if (
-      !adminEmail ||
-      (adminEmail !== "meet.r@ahduni.edu.in" &&
-        adminEmail !== "jay.r1@ahduni.edu.in")
-    ) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized. Admin access required." });
+    console.log("Approve request received:", { adminEmail, id });
+    
+    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
+    if (!adminEmail || !adminEmails.includes(adminEmail)) {
+      return res.status(403).json({ error: "Unauthorized. Admin access required." });
     }
     if (!id) {
       return res.status(400).json({ error: "Request ID is required" });
     }
+    
     const index = pinecone.index("chemicals-new");
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
-    // Get the unapproved chemical details
+    
+    // First, get the record to extract data
     const queryResponse = await index.namespace("unapproved_chemicals").query({
       vector: dummyVector,
       filter: { id: { $eq: id } },
       topK: 1,
       includeMetadata: true,
     });
+    
+    console.log("Query response for approval:", queryResponse);
+    
     if (!queryResponse.matches || queryResponse.matches.length === 0) {
+      // Try without filter - maybe the ID is the record ID itself
+      const allResponse = await index.namespace("unapproved_chemicals").query({
+        vector: dummyVector,
+        topK: 1000,
+        includeMetadata: true,
+      });
+      
+      const foundRecord = allResponse.matches?.find(match => match.id === id);
+      if (!foundRecord) {
       return res.status(404).json({ error: "Unapproved chemical not found" });
     }
-    const request = queryResponse.matches[0];
-    const { name, email } = request.metadata;
+      
+      const { name, email } = foundRecord.metadata;
+      console.log("Found unapproved chemical:", { name, email, id });
 
     // Add to approved_chemicals
     await index.namespace("approved_chemicals").upsert([
@@ -985,95 +1027,48 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
         },
       },
     ]);
+      console.log("Added to approved_chemicals:", id);
 
-    // Add to user's buy list
-    try {
-      const buyProductsIndex = pinecone.index("products-you-buy");
-      const buyDummyVector = new Array(1024).fill(0);
-      buyDummyVector[0] = 1;
+      // Remove from unapproved_chemicals
+      await index.namespace("unapproved_chemicals").deleteOne(id);
+      console.log("Removed from unapproved_chemicals:", id);
 
-      // Check if user already has a record in the "products" namespace
-      const buyQueryResponse = await buyProductsIndex
-        .namespace("products")
-        .query({
-          vector: buyDummyVector,
-          filter: { email: { $eq: email } },
-          topK: 1,
-          includeMetadata: true,
-        });
-
-      let existingProducts = [];
-      let recordId = null;
-
-      if (buyQueryResponse.matches && buyQueryResponse.matches.length > 0) {
-        // User already has products, update existing record
-        const metadata = buyQueryResponse.matches[0].metadata;
-        if (Array.isArray(metadata.productList)) {
-          existingProducts = metadata.productList;
-        } else if (typeof metadata.productList === "string") {
-          existingProducts = JSON.parse(metadata.productList);
-        } else {
-          existingProducts = [];
-        }
-        recordId = buyQueryResponse.matches[0].id;
-      }
-
-      // Check if product already exists (case-insensitive, normalized)
-      const normalizedNew = normalizeName(name);
-      const productExists = existingProducts.some((existingProduct) => {
-        const normalizedExisting = normalizeName(existingProduct);
-        return normalizedExisting === normalizedNew;
+      res.status(200).json({
+        success: true,
+        message: "Chemical approved and added to approved_chemicals.",
+        id,
       });
+    } else {
+      const request = queryResponse.matches[0];
+      const { name, email } = request.metadata;
+      console.log("Found unapproved chemical:", { name, email, id });
 
-      if (!productExists) {
-        // Add new product to user's buy list
-        existingProducts.push(name);
-
-        if (recordId) {
-          // Update existing record
-          await buyProductsIndex.namespace("products").deleteOne(recordId);
-          await buyProductsIndex.namespace("products").upsert([
+      // Add to approved_chemicals
+      await index.namespace("approved_chemicals").upsert([
             {
-              id: recordId,
-              values: buyDummyVector,
+          id: id,
+          values: dummyVector,
               metadata: {
-                email: email,
-                id: recordId,
-                productList: JSON.stringify(existingProducts),
-                productCount: existingProducts.length,
+            id: id,
+            name: name,
+            approvedBy: adminEmail,
+            approvedAt: new Date().toISOString(),
+            requestedBy: email,
               },
             },
           ]);
-        } else {
-          // Create new record
-          const newId = `buy_products_${Date.now()}`;
-          await buyProductsIndex.namespace("products").upsert([
-            {
-              id: newId,
-              values: buyDummyVector,
-              metadata: {
-                email: email,
-                id: newId,
-                productList: JSON.stringify(existingProducts),
-                productCount: existingProducts.length,
-              },
-            },
-          ]);
-        }
-      }
-    } catch (buyError) {
-      console.error("Error adding to user's buy list:", buyError);
-      // Don't fail the approval if buy list addition fails
-    }
+      console.log("Added to approved_chemicals:", id);
 
-    // Delete from unapproved_chemicals
-    await index.namespace("unapproved_chemicals").deleteOne(id);
+      // Remove from unapproved_chemicals
+      await index.namespace("unapproved_chemicals").deleteOne(id);
+      console.log("Removed from unapproved_chemicals:", id);
+
     res.status(200).json({
       success: true,
-      message:
-        "Chemical approved and added to approved_chemicals and user's buy list",
+        message: "Chemical approved and added to approved_chemicals.",
       id,
     });
+    }
   } catch (error) {
     console.error("Error approving unapproved chemical:", error);
     res.status(500).json({
@@ -1087,25 +1082,112 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
 app.post("/api/unapproved-chemicals/reject", async (req, res) => {
   try {
     const { adminEmail, id } = req.body;
-    if (
-      !adminEmail ||
-      (adminEmail !== "meet.r@ahduni.edu.in" &&
-        adminEmail !== "jay.r1@ahduni.edu.in")
-    ) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized. Admin access required." });
+    console.log("Reject request received:", { adminEmail, id });
+    
+    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
+    if (!adminEmail || !adminEmails.includes(adminEmail)) {
+      return res.status(403).json({ error: "Unauthorized. Admin access required." });
     }
     if (!id) {
       return res.status(400).json({ error: "Request ID is required" });
     }
-    const index = pinecone.index("chemicals-new");
 
-    // Delete from unapproved_chemicals
+    const index = pinecone.index("chemicals-new");
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // First, get the record to extract data
+    const queryResponse = await index.namespace("unapproved_chemicals").query({
+      vector: dummyVector,
+      filter: { id: { $eq: id } },
+      topK: 1,
+      includeMetadata: true,
+    });
+    
+    console.log("Query response for rejection:", queryResponse);
+    
+    let name, email;
+
+    if (!queryResponse.matches || queryResponse.matches.length === 0) {
+      // Try without filter - maybe the ID is the record ID itself
+      const allResponse = await index.namespace("unapproved_chemicals").query({
+        vector: dummyVector,
+        topK: 1000,
+        includeMetadata: true,
+      });
+      
+      const foundRecord = allResponse.matches?.find(match => match.id === id);
+      if (!foundRecord) {
+      return res.status(404).json({ error: "Unapproved chemical not found" });
+    }
+
+      name = foundRecord.metadata.name;
+      email = foundRecord.metadata.email;
+      console.log("Found unapproved chemical for rejection:", { name, email, id });
+    } else {
+    const request = queryResponse.matches[0];
+      name = request.metadata.name;
+      email = request.metadata.email;
+      console.log("Found unapproved chemical for rejection:", { name, email, id });
+    }
+
+    // Remove from user's buy list
+    try {
+      const buyProductsIndex = pinecone.index("products-you-buy");
+      const buyDummyVector = new Array(1024).fill(0);
+      buyDummyVector[0] = 1;
+      const buyQueryResponse = await buyProductsIndex.namespace("products").query({
+          vector: buyDummyVector,
+          filter: { email: { $eq: email } },
+          topK: 1,
+          includeMetadata: true,
+        });
+
+      if (buyQueryResponse.matches && buyQueryResponse.matches.length > 0) {
+        const metadata = buyQueryResponse.matches[0].metadata;
+        let existingProducts = [];
+        if (Array.isArray(metadata.productList)) {
+          existingProducts = metadata.productList;
+        } else if (typeof metadata.productList === "string") {
+          existingProducts = JSON.parse(metadata.productList);
+        }
+
+        // Remove the rejected chemical from user's list
+        const normalizedRejected = normalizeName(name);
+        const filteredProducts = existingProducts.filter((product) => {
+          const normalizedProduct = normalizeName(product);
+          return normalizedProduct !== normalizedRejected;
+        });
+
+        const recordId = buyQueryResponse.matches[0].id;
+        if (filteredProducts.length !== existingProducts.length) {
+          await buyProductsIndex.namespace("products").deleteOne(recordId);
+          await buyProductsIndex.namespace("products").upsert([
+            {
+              id: recordId,
+              values: buyDummyVector,
+              metadata: {
+                email: email,
+                id: recordId,
+                productList: JSON.stringify(filteredProducts),
+                productCount: filteredProducts.length,
+              },
+            },
+          ]);
+          console.log("Removed from user's buy list:", { email, name });
+        }
+      }
+    } catch (buyError) {
+      console.error("Error removing from user's buy list:", buyError);
+    }
+
+    // Remove from unapproved_chemicals
     await index.namespace("unapproved_chemicals").deleteOne(id);
+    console.log("Removed from unapproved_chemicals:", id);
+
     res.status(200).json({
       success: true,
-      message: "Chemical request rejected and removed",
+      message: "Chemical request rejected and removed from all lists.",
       id,
     });
   } catch (error) {
@@ -1389,6 +1471,50 @@ app.get("/api/inquiries/:userNumber", async (req, res) => {
     console.error("Error fetching inquiries:", error);
     res.status(500).json({
       error: "Failed to fetch inquiries",
+      details: error.message,
+    });
+  }
+});
+
+// 1. Add GET /api/unapproved-chemicals endpoint
+app.get("/api/unapproved-chemicals", async (req, res) => {
+  try {
+    const index = pinecone.index("chemicals-new");
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Get ALL records from unapproved_chemicals namespace (no filtering)
+    const queryResponse = await index.namespace("unapproved_chemicals").query({
+      vector: dummyVector,
+      topK: 1000, // Get all records
+      includeMetadata: true,
+    });
+
+    console.log("Unapproved chemicals query response:", queryResponse);
+    
+    const pendingRequests =
+      queryResponse.matches?.map((match) => ({
+        id: match.id, // Use the actual Pinecone record ID
+        name: match.metadata.name,
+        email: match.metadata.email,
+        status: match.metadata.status || "pending",
+        submittedAt: match.metadata.submittedAt,
+        aiApproved: match.metadata.aiApproved,
+        aiConfidence: match.metadata.aiConfidence,
+        aiReasoning: match.metadata.aiReasoning,
+      })) || [];
+      
+    console.log("Pending requests found:", pendingRequests.length);
+    
+    res.status(200).json({
+      success: true,
+      requests: pendingRequests,
+      count: pendingRequests.length,
+    });
+  } catch (error) {
+    console.error("Error fetching unapproved chemicals:", error);
+    res.status(500).json({
+      error: "Failed to fetch unapproved chemicals",
       details: error.message,
     });
   }
