@@ -182,7 +182,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
             {/* Mobile menu */}
             <div className="mobile-menu">
               <button
-                onClick={handleStartInquiry}
+                onClick={handleWhatsApp}
                 className="mobile-inquiry-button"
               >
                 <MessageCircle className="mobile-inquiry-button-icon" />

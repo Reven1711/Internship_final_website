@@ -42,6 +42,9 @@ const AIAgent = () => {
   const handleGetStarted = () => {
     setIsPopupOpen(true);
   };
+  const handleWhatsApp = () => {
+    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy', '_blank');
+  };
 
   const closePopup = () => {
     setIsPopupOpen(false);
@@ -90,6 +93,14 @@ const AIAgent = () => {
                   <span>Precision Sourcing</span>
                 </div>
               </div>
+
+              <button 
+                onClick={handleWhatsApp}
+                className="ai-agent-cta-button"
+              >
+                Get Started
+                <ArrowRight className="cta-icon" />
+              </button>
             </div>
 
             <div className="ai-agent-visual">
@@ -124,7 +135,7 @@ const AIAgent = () => {
               </p>
 
               <button 
-                onClick={handleGetStarted}
+                onClick={handleWhatsApp}
                 className="ai-agent-cta-button"
               >
                 Get Started
