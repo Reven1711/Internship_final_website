@@ -73,6 +73,9 @@ const TermsOfUse: React.FC = () => {
           <h2>8. Disclaimers</h2>
           <p>The Platform is provided "as is" and "as available" without warranties of any kind. We do not guarantee the accuracy, completeness, or usefulness of any information on the Platform.</p>
 
+          <h3>8.1 Quotation Disclaimer</h3>
+          <p>This quotation has been compiled using Sourceasy's AI agent based on publicly or user-submitted data. Sourceasy is not responsible for any financial transactions between you and the supplier. Buyers are advised to independently verify the credibility of the supplier and agree on payment and credit terms before proceeding. Do not make any advance payment without conducting due diligence and appropriate background checks.</p>
+
           <h2>9. Limitation of Liability</h2>
           <p>In no event shall Sourceasy be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.</p>
 
