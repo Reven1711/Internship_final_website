@@ -1148,258 +1148,190 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           
           {tab === 'history' && (
             <div className="history-content">
-              {/* History Tabs and Search Bar in one row */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '24px',
-                gap: '24px',
-              }}>
-                <div className="history-tabs" style={{
-                  display: 'flex',
-                  gap: '0',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  padding: '4px',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                  maxWidth: 'fit-content',
-                  height: '48px',
-                  alignItems: 'center',
-                }}>
+              {/* Tabs Row: Inquiry Raised / Quotation Sent and Search Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '48px', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button
-                    className={`history-tab-btn ${historyTab === 'inquiry' ? 'active' : ''}`}
                     onClick={() => setHistoryTab('inquiry')}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '12px 24px',
-                      border: 'none',
-                      background: historyTab === 'inquiry' ? '#eff6ff' : 'none',
-                      color: historyTab === 'inquiry' ? '#2563eb' : '#6b7280',
-                      fontSize: '14px',
-                      fontWeight: '500',
+                      background: historyTab === 'inquiry' ? '#2563eb' : 'white',
+                      color: historyTab === 'inquiry' ? 'white' : '#2563eb',
+                      border: '1.5px solid #2563eb',
+                      borderRadius: '10px 10px 0 0',
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      padding: '10px 28px',
+                      boxShadow: historyTab === 'inquiry' ? '0 4px 12px rgba(37,99,235,0.08)' : '0 2px 8px rgba(37,99,235,0.04)',
                       cursor: 'pointer',
-                      borderRadius: '6px',
-                      transition: 'all 0.2s ease',
+                      outline: 'none',
                       borderBottom: historyTab === 'inquiry' ? '2px solid #2563eb' : 'none',
                       height: '40px',
                     }}
                   >
-                    <FileText size={16} />
                     Inquiry Raised
                   </button>
                   <button
-                    className={`history-tab-btn ${historyTab === 'quotation' ? 'active' : ''}`}
                     onClick={() => setHistoryTab('quotation')}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '12px 24px',
-                      border: 'none',
-                      background: historyTab === 'quotation' ? '#eff6ff' : 'none',
-                      color: historyTab === 'quotation' ? '#2563eb' : '#6b7280',
-                      fontSize: '14px',
-                      fontWeight: '500',
+                      background: historyTab === 'quotation' ? '#2563eb' : 'white',
+                      color: historyTab === 'quotation' ? 'white' : '#2563eb',
+                      border: '1.5px solid #2563eb',
+                      borderRadius: '10px 10px 0 0',
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      padding: '10px 28px',
+                      boxShadow: historyTab === 'quotation' ? '0 4px 12px rgba(37,99,235,0.08)' : '0 2px 8px rgba(37,99,235,0.04)',
                       cursor: 'pointer',
-                      borderRadius: '6px',
-                      transition: 'all 0.2s ease',
+                      outline: 'none',
                       borderBottom: historyTab === 'quotation' ? '2px solid #2563eb' : 'none',
                       height: '40px',
                     }}
                   >
-                    <RupeeIcon size={16} />
                     Quotation Sent
                   </button>
                 </div>
-                {/* Search Bar - Aligned and centered with tabs */}
-                <div style={{ display: 'flex', alignItems: 'center', height: '48px' }}>
-                  {historyTab === 'inquiry' && (
-                    <div style={{
+                {/* Search Bar Only */}
+                {historyTab === 'inquiry' && (
+                  <input
+                    type="text"
+                    placeholder="Search inquiries..."
+                    value={inquirySearch}
+                    onChange={(e) => setInquirySearch(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      width: '180px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease',
+                      height: '40px',
+                      boxSizing: 'border-box',
                       display: 'flex',
-                      gap: '12px',
-                      alignItems: 'center'
-                    }}>
+                      alignItems: 'center',
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  />
+                )}
+                {historyTab === 'quotation' && (
+                  <input
+                    type="text"
+                    placeholder="Search quotations..."
+                    value={quotationSearch}
+                    onChange={(e) => setQuotationSearch(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      width: '180px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease',
+                      height: '40px',
+                      boxSizing: 'border-box',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  />
+                )}
+              </div>
+              {/* Date Pickers Row: Always below */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '12px 0 24px 0', flexWrap: 'wrap' }}>
+                {historyTab === 'inquiry' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
                       <input
-                        type="text"
-                        placeholder="Search inquiries..."
-                        value={inquirySearch}
-                        onChange={(e) => setInquirySearch(e.target.value)}
+                        type="date"
+                        value={inquiryStartDate}
+                        onChange={(e) => setInquiryStartDate(e.target.value)}
                         style={{
-                          padding: '12px 16px',
+                          padding: '8px 12px',
                           border: '1px solid #d1d5db',
                           borderRadius: '6px',
-                          fontSize: '14px',
-                          width: '180px',
+                          fontSize: '12px',
+                          width: '120px',
                           outline: 'none',
                           transition: 'border-color 0.2s ease',
-                          height: '40px',
+                          height: '32px',
                           boxSizing: 'border-box',
-                          display: 'flex',
-                          alignItems: 'center',
                         }}
                         onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                         onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                       />
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          From:
-                        </span>
-                        <input
-                          type="date"
-                          value={inquiryStartDate}
-                          onChange={(e) => setInquiryStartDate(e.target.value)}
-                          style={{
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            width: '120px',
-                            outline: 'none',
-                            transition: 'border-color 0.2s ease',
-                            height: '32px',
-                            boxSizing: 'border-box',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                        />
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          To:
-                        </span>
-                        <input
-                          type="date"
-                          value={inquiryEndDate}
-                          onChange={(e) => setInquiryEndDate(e.target.value)}
-                          style={{
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            width: '120px',
-                            outline: 'none',
-                            transition: 'border-color 0.2s ease',
-                            height: '32px',
-                            boxSizing: 'border-box',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                        />
-                      </div>
                     </div>
-                  )}
-                  {historyTab === 'quotation' && (
-                    <div style={{
-                      display: 'flex',
-                      gap: '12px',
-                      alignItems: 'center'
-                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
                       <input
-                        type="text"
-                        placeholder="Search quotations..."
-                        value={quotationSearch}
-                        onChange={(e) => setQuotationSearch(e.target.value)}
+                        type="date"
+                        value={inquiryEndDate}
+                        onChange={(e) => setInquiryEndDate(e.target.value)}
                         style={{
-                          padding: '12px 16px',
+                          padding: '8px 12px',
                           border: '1px solid #d1d5db',
                           borderRadius: '6px',
-                          fontSize: '14px',
-                          width: '180px',
+                          fontSize: '12px',
+                          width: '120px',
                           outline: 'none',
                           transition: 'border-color 0.2s ease',
-                          height: '40px',
+                          height: '32px',
                           boxSizing: 'border-box',
-                          display: 'flex',
-                          alignItems: 'center',
                         }}
                         onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                         onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                       />
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          From:
-                        </span>
-                        <input
-                          type="date"
-                          value={quotationStartDate}
-                          onChange={(e) => setQuotationStartDate(e.target.value)}
-                          style={{
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            width: '120px',
-                            outline: 'none',
-                            transition: 'border-color 0.2s ease',
-                            height: '32px',
-                            boxSizing: 'border-box',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                        />
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          To:
-                        </span>
-                        <input
-                          type="date"
-                          value={quotationEndDate}
-                          onChange={(e) => setQuotationEndDate(e.target.value)}
-                          style={{
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            width: '120px',
-                            outline: 'none',
-                            transition: 'border-color 0.2s ease',
-                            height: '32px',
-                            boxSizing: 'border-box',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                        />
-                      </div>
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
+                {historyTab === 'quotation' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
+                      <input
+                        type="date"
+                        value={quotationStartDate}
+                        onChange={(e) => setQuotationStartDate(e.target.value)}
+                        style={{
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          width: '120px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s ease',
+                          height: '32px',
+                          boxSizing: 'border-box',
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
+                      <input
+                        type="date"
+                        value={quotationEndDate}
+                        onChange={(e) => setQuotationEndDate(e.target.value)}
+                        style={{
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          width: '120px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s ease',
+                          height: '32px',
+                          boxSizing: 'border-box',
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Inquiry Raised Content */}
