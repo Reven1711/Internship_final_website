@@ -209,8 +209,8 @@ app.get("/api/buy-products/:email", async (req, res) => {
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
 
-    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1536).fill(0);
+    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1024).fill(0);
     dummyVector[0] = 1;
 
     // Query the index for the email in the "products" namespace
@@ -345,7 +345,7 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
 
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
-    const dummyVector = new Array(1536).fill(0);
+    const dummyVector = new Array(1024).fill(0);
     dummyVector[0] = 1;
 
     // First, check if user already has a record in the "products" namespace
@@ -462,8 +462,8 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
 
-    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1536).fill(0);
+    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1024).fill(0);
     dummyVector[0] = 1;
 
     // Find user's record in the "products" namespace
@@ -1204,7 +1204,7 @@ app.post("/api/unapproved-chemicals/reject", async (req, res) => {
     // Remove from user's buy list
     try {
       const buyProductsIndex = pinecone.index("products-you-buy");
-      const buyDummyVector = new Array(1536).fill(0);
+      const buyDummyVector = new Array(1024).fill(0);
       buyDummyVector[0] = 1;
       const buyQueryResponse = await buyProductsIndex
         .namespace("products")

@@ -37,7 +37,7 @@ async function testProfileData() {
     console.log("\n=== Test 2: products-you-buy index ===");
     try {
       const index2 = pinecone.index("products-you-buy");
-      const dummyVector2 = new Array(1536).fill(0);
+      const dummyVector2 = new Array(1024).fill(0);
       dummyVector2[0] = 1;
 
       const queryResponse2 = await index2.namespace("products").query({
