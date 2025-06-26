@@ -115,6 +115,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Date filter state for history sections
   const [inquiryDateFilter, setInquiryDateFilter] = useState('');
   const [quotationDateFilter, setQuotationDateFilter] = useState('');
+  
+  // Date range filter state for history sections
+  const [inquiryStartDate, setInquiryStartDate] = useState('');
+  const [inquiryEndDate, setInquiryEndDate] = useState('');
+  const [quotationStartDate, setQuotationStartDate] = useState('');
+  const [quotationEndDate, setQuotationEndDate] = useState('');
 
   // Edit profile popup state
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
@@ -375,6 +381,40 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       
       // Compare only the date part (year, month, day)
       return itemDate.toDateString() === filterDateObj.toDateString();
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // Helper function to check if a date falls within a date range
+  const matchesDateRangeFilter = (dateString: string, startDate: string, endDate: string) => {
+    if (!startDate && !endDate) return true;
+    
+    try {
+      const itemDate = new Date(dateString);
+      itemDate.setHours(0, 0, 0, 0); // Set to start of day for comparison
+      
+      if (startDate && endDate) {
+        // Both start and end dates are set
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        startDateObj.setHours(0, 0, 0, 0);
+        endDateObj.setHours(23, 59, 59, 999); // Set to end of day
+        
+        return itemDate >= startDateObj && itemDate <= endDateObj;
+      } else if (startDate) {
+        // Only start date is set
+        const startDateObj = new Date(startDate);
+        startDateObj.setHours(0, 0, 0, 0);
+        return itemDate >= startDateObj;
+      } else if (endDate) {
+        // Only end date is set
+        const endDateObj = new Date(endDate);
+        endDateObj.setHours(23, 59, 59, 999); // Set to end of day
+        return itemDate <= endDateObj;
+      }
+      
+      return true;
     } catch (error) {
       return false;
     }
@@ -1121,7 +1161,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                           border: '1px solid #d1d5db',
                           borderRadius: '6px',
                           fontSize: '14px',
-                          width: '200px',
+                          width: '180px',
                           outline: 'none',
                           transition: 'border-color 0.2s ease',
                           height: '40px',
@@ -1132,26 +1172,68 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                         onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                       />
-                      <input
-                        type="date"
-                        value={inquiryDateFilter}
-                        onChange={(e) => setInquiryDateFilter(e.target.value)}
-                        style={{
-                          padding: '12px 16px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          width: '150px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '40px',
-                          boxSizing: 'border-box',
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          From:
+                        </span>
+                        <input
+                          type="date"
+                          value={inquiryStartDate}
+                          onChange={(e) => setInquiryStartDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          To:
+                        </span>
+                        <input
+                          type="date"
+                          value={inquiryEndDate}
+                          onChange={(e) => setInquiryEndDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
                     </div>
                   )}
                   {historyTab === 'quotation' && (
@@ -1170,7 +1252,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                           border: '1px solid #d1d5db',
                           borderRadius: '6px',
                           fontSize: '14px',
-                          width: '200px',
+                          width: '180px',
                           outline: 'none',
                           transition: 'border-color 0.2s ease',
                           height: '40px',
@@ -1181,26 +1263,68 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                         onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                       />
-                      <input
-                        type="date"
-                        value={quotationDateFilter}
-                        onChange={(e) => setQuotationDateFilter(e.target.value)}
-                        style={{
-                          padding: '12px 16px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          width: '150px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '40px',
-                          boxSizing: 'border-box',
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          From:
+                        </span>
+                        <input
+                          type="date"
+                          value={quotationStartDate}
+                          onChange={(e) => setQuotationStartDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          To:
+                        </span>
+                        <input
+                          type="date"
+                          value={quotationEndDate}
+                          onChange={(e) => setQuotationEndDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1281,7 +1405,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                             inquiry.quantity.toLowerCase().includes(searchTerm) ||
                             inquiry.orderId.toLowerCase().includes(searchTerm);
                           
-                          const matchesDate = matchesDateFilter(inquiry.inquiryDate, inquiryDateFilter);
+                          const matchesDate = matchesDateRangeFilter(inquiry.inquiryDate, inquiryStartDate, inquiryEndDate);
                           
                           return matchesSearch && matchesDate;
                         })
@@ -1472,7 +1596,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                             quotation.paymentTerms.toLowerCase().includes(searchTerm) ||
                             quotation.deliveryTime.toLowerCase().includes(searchTerm);
                           
-                          const matchesDate = matchesDateFilter(quotation.submissionDate, quotationDateFilter);
+                          const matchesDate = matchesDateRangeFilter(quotation.submissionDate, quotationStartDate, quotationEndDate);
                           
                           return matchesSearch && matchesDate;
                         })
