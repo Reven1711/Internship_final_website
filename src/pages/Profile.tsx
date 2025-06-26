@@ -111,6 +111,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Search state for history sections
   const [inquirySearch, setInquirySearch] = useState('');
   const [quotationSearch, setQuotationSearch] = useState('');
+  
+  // Date filter state for history sections
+  const [inquiryDateFilter, setInquiryDateFilter] = useState('');
+  const [quotationDateFilter, setQuotationDateFilter] = useState('');
 
   // Edit profile popup state
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
@@ -360,6 +364,21 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       sessionStorage.removeItem('profileActiveTab');
     }
   }, []);
+
+  // Helper function to check if a date matches the filter
+  const matchesDateFilter = (dateString: string, filterDate: string) => {
+    if (!filterDate) return true;
+    
+    try {
+      const itemDate = new Date(dateString);
+      const filterDateObj = new Date(filterDate);
+      
+      // Compare only the date part (year, month, day)
+      return itemDate.toDateString() === filterDateObj.toDateString();
+    } catch (error) {
+      return false;
+    }
+  };
 
   // Add new product function
   const handleAddProduct = async () => {
@@ -1087,50 +1106,102 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 {/* Search Bar - Aligned and centered with tabs */}
                 <div style={{ display: 'flex', alignItems: 'center', height: '48px' }}>
                   {historyTab === 'inquiry' && (
-                    <input
-                      type="text"
-                      placeholder="Search inquiries..."
-                      value={inquirySearch}
-                      onChange={(e) => setInquirySearch(e.target.value)}
-                      style={{
-                        padding: '12px 16px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        width: '250px',
-                        outline: 'none',
-                        transition: 'border-color 0.2s ease',
-                        height: '40px',
-                        boxSizing: 'border-box',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                    />
+                    <div style={{
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'center'
+                    }}>
+                      <input
+                        type="text"
+                        placeholder="Search inquiries..."
+                        value={inquirySearch}
+                        onChange={(e) => setInquirySearch(e.target.value)}
+                        style={{
+                          padding: '12px 16px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          width: '200px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s ease',
+                          height: '40px',
+                          boxSizing: 'border-box',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
+                      <input
+                        type="date"
+                        value={inquiryDateFilter}
+                        onChange={(e) => setInquiryDateFilter(e.target.value)}
+                        style={{
+                          padding: '12px 16px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          width: '150px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s ease',
+                          height: '40px',
+                          boxSizing: 'border-box',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
+                    </div>
                   )}
                   {historyTab === 'quotation' && (
-                    <input
-                      type="text"
-                      placeholder="Search quotations..."
-                      value={quotationSearch}
-                      onChange={(e) => setQuotationSearch(e.target.value)}
-                      style={{
-                        padding: '12px 16px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        width: '250px',
-                        outline: 'none',
-                        transition: 'border-color 0.2s ease',
-                        height: '40px',
-                        boxSizing: 'border-box',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                    />
+                    <div style={{
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'center'
+                    }}>
+                      <input
+                        type="text"
+                        placeholder="Search quotations..."
+                        value={quotationSearch}
+                        onChange={(e) => setQuotationSearch(e.target.value)}
+                        style={{
+                          padding: '12px 16px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          width: '200px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s ease',
+                          height: '40px',
+                          boxSizing: 'border-box',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
+                      <input
+                        type="date"
+                        value={quotationDateFilter}
+                        onChange={(e) => setQuotationDateFilter(e.target.value)}
+                        style={{
+                          padding: '12px 16px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          width: '150px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s ease',
+                          height: '40px',
+                          boxSizing: 'border-box',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -1200,11 +1271,20 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       gap: '20px'
                     }}>
                       {inquiryData
-                        .filter(inquiry => 
-                          inquiry.productName.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-                          inquiry.deliveryLocation.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-                          inquiry.quantity.toLowerCase().includes(inquirySearch.toLowerCase())
-                        )
+                        .filter(inquiry => {
+                          const searchTerm = inquirySearch.toLowerCase();
+                          const productNames = Array.isArray(inquiry.products) 
+                            ? inquiry.products.join(' ').toLowerCase()
+                            : inquiry.productName.toLowerCase();
+                          const matchesSearch = productNames.includes(searchTerm) ||
+                            inquiry.deliveryLocation.toLowerCase().includes(searchTerm) ||
+                            inquiry.quantity.toLowerCase().includes(searchTerm) ||
+                            inquiry.orderId.toLowerCase().includes(searchTerm);
+                          
+                          const matchesDate = matchesDateFilter(inquiry.inquiryDate, inquiryDateFilter);
+                          
+                          return matchesSearch && matchesDate;
+                        })
                         .map((inquiry) => (
                         <div key={inquiry.id} className="inquiry-card" style={{
                           background: 'white',
@@ -1227,12 +1307,23 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                 color: '#1f2937',
                                 margin: '0 0 4px 0'
                               }}>
-                                {inquiry.productName}
+                                {Array.isArray(inquiry.products) 
+                                  ? inquiry.products.join(', ')
+                                  : inquiry.productName}
                               </h3>
+                              {inquiry.formattedDate && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: '#6b7280',
+                                  marginTop: '4px'
+                                }}>
+                                  {inquiry.formattedDate}
+                                </div>
+                              )}
                             </div>
                           </div>
                           
-                          <div className="inquiry-details" style={{
+                          <div style={{
                             display: 'grid',
                             gridTemplateColumns: '1fr 1fr',
                             gap: '12px',
@@ -1272,7 +1363,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                             </div>
                           </div>
 
-                          <div className="inquiry-actions">
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
                             <a
                               href={inquiry.comparisonReportLink}
                               target="_blank"
@@ -1370,12 +1465,17 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       gap: '20px'
                     }}>
                       {quotationData
-                        .filter(quotation => 
-                          quotation.productName.toLowerCase().includes(quotationSearch.toLowerCase()) ||
-                          quotation.description.toLowerCase().includes(quotationSearch.toLowerCase()) ||
-                          quotation.paymentTerms.toLowerCase().includes(quotationSearch.toLowerCase()) ||
-                          quotation.deliveryTime.toLowerCase().includes(quotationSearch.toLowerCase())
-                        )
+                        .filter(quotation => {
+                          const searchTerm = quotationSearch.toLowerCase();
+                          const matchesSearch = quotation.productName.toLowerCase().includes(searchTerm) ||
+                            quotation.description.toLowerCase().includes(searchTerm) ||
+                            quotation.paymentTerms.toLowerCase().includes(searchTerm) ||
+                            quotation.deliveryTime.toLowerCase().includes(searchTerm);
+                          
+                          const matchesDate = matchesDateFilter(quotation.submissionDate, quotationDateFilter);
+                          
+                          return matchesSearch && matchesDate;
+                        })
                         .map((quotation) => (
                         <div key={quotation.id} className="quotation-card" style={{
                           background: 'white',
@@ -1388,14 +1488,29 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                           <div className="quotation-header" style={{
                             marginBottom: '16px'
                           }}>
-                            <h3 style={{
-                              fontSize: '18px',
-                              fontWeight: '600',
-                              color: '#1f2937',
-                              margin: '0 0 8px 0'
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              marginBottom: '8px'
                             }}>
-                              {quotation.productName}
-                            </h3>
+                              <h3 style={{
+                                fontSize: '18px',
+                                fontWeight: '600',
+                                color: '#1f2937',
+                                margin: '0'
+                              }}>
+                                {quotation.productName}
+                              </h3>
+                              {quotation.formattedDate && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: '#6b7280'
+                                }}>
+                                  {quotation.formattedDate}
+                                </div>
+                              )}
+                            </div>
                             <p style={{
                               fontSize: '14px',
                               color: '#6b7280',
@@ -1406,7 +1521,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                             </p>
                           </div>
 
-                          <div className="quotation-pricing" style={{
+                          <div style={{
                             display: 'grid',
                             gridTemplateColumns: '1fr 1fr',
                             gap: '12px',
@@ -1449,7 +1564,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                             </div>
                           </div>
 
-                          <div className="quotation-details" style={{
+                          <div style={{
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '8px',

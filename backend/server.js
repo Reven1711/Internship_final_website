@@ -4,7 +4,7 @@ const nodemailer = require("nodemailer");
 const { Pinecone } = require("@pinecone-database/pinecone");
 require("dotenv").config();
 const OpenAI = require("openai");
-const { getAllReferrals } = require('./utils/pinecone');
+const { getAllReferrals } = require("./utils/pinecone");
 
 const app = express();
 
@@ -281,7 +281,9 @@ app.post("/api/buy-products/add", async (req, res) => {
     const { email, productName } = req.body;
 
     if (!email || !productName) {
-      return res.status(400).json({ error: "Email and product name are required" });
+      return res
+        .status(400)
+        .json({ error: "Email and product name are required" });
     }
 
     // AI Moderation
@@ -311,22 +313,34 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
-          { role: "system", content: "You are a strict content moderator for a chemical trading platform. You must detect abusive language, slurs, and inappropriate content in ALL languages including Hindi, Gujarati, and other Indian languages. Only respond with 'Yes' (block) or 'No' (allow)." },
-          { role: "user", content: prompt }
+          {
+            role: "system",
+            content:
+              "You are a strict content moderator for a chemical trading platform. You must detect abusive language, slurs, and inappropriate content in ALL languages including Hindi, Gujarati, and other Indian languages. Only respond with 'Yes' (block) or 'No' (allow).",
+          },
+          { role: "user", content: prompt },
         ],
         max_tokens: 3,
         temperature: 0,
       });
-      const aiResponse = completion.choices[0].message.content.trim().toLowerCase();
+      const aiResponse = completion.choices[0].message.content
+        .trim()
+        .toLowerCase();
       aiApproved = aiResponse.startsWith("no");
-      console.log(`AI Moderation for "${productName}": ${aiResponse} (Approved: ${aiApproved})`);
+      console.log(
+        `AI Moderation for "${productName}": ${aiResponse} (Approved: ${aiApproved})`
+      );
     } catch (error) {
       console.error("Error in OpenAI moderation:", error);
-      return res.status(500).json({ error: "AI moderation failed. Please try again later." });
+      return res
+        .status(500)
+        .json({ error: "AI moderation failed. Please try again later." });
     }
 
     if (!aiApproved) {
-      return res.status(400).json({ error: "Please enter a valid chemical or product." });
+      return res
+        .status(400)
+        .json({ error: "Please enter a valid chemical or product." });
     }
 
     // Get the buy products index
@@ -363,7 +377,9 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
       return normalizedExisting === normalizedNew;
     });
     if (productExists) {
-      return res.status(400).json({ error: "Product already exists in your list" });
+      return res
+        .status(400)
+        .json({ error: "Product already exists in your list" });
     }
 
     // Add new product
@@ -930,11 +946,10 @@ app.post("/api/product-requests/submit", async (req, res) => {
 app.get("/api/unapproved-chemicals/pending", async (req, res) => {
   try {
     const { adminEmail } = req.query;
-    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
-    if (
-      !adminEmail ||
-      !adminEmails.includes(adminEmail)
-    ) {
+    const adminEmails = process.env.ADMIN_EMAILS
+      ? process.env.ADMIN_EMAILS.split(",")
+      : [];
+    if (!adminEmail || !adminEmails.includes(adminEmail)) {
       return res
         .status(403)
         .json({ error: "Unauthorized. Admin access required." });
@@ -975,19 +990,23 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
   try {
     const { adminEmail, id } = req.body;
     console.log("Approve request received:", { adminEmail, id });
-    
-    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
+
+    const adminEmails = process.env.ADMIN_EMAILS
+      ? process.env.ADMIN_EMAILS.split(",")
+      : [];
     if (!adminEmail || !adminEmails.includes(adminEmail)) {
-      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized. Admin access required." });
     }
     if (!id) {
       return res.status(400).json({ error: "Request ID is required" });
     }
-    
+
     const index = pinecone.index("chemicals-new");
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
-    
+
     // First, get the record to extract data
     const queryResponse = await index.namespace("unapproved_chemicals").query({
       vector: dummyVector,
@@ -995,9 +1014,9 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
       topK: 1,
       includeMetadata: true,
     });
-    
+
     console.log("Query response for approval:", queryResponse);
-    
+
     if (!queryResponse.matches || queryResponse.matches.length === 0) {
       // Try without filter - maybe the ID is the record ID itself
       const allResponse = await index.namespace("unapproved_chemicals").query({
@@ -1005,29 +1024,29 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
         topK: 1000,
         includeMetadata: true,
       });
-      
-      const foundRecord = allResponse.matches?.find(match => match.id === id);
+
+      const foundRecord = allResponse.matches?.find((match) => match.id === id);
       if (!foundRecord) {
-      return res.status(404).json({ error: "Unapproved chemical not found" });
-    }
-      
+        return res.status(404).json({ error: "Unapproved chemical not found" });
+      }
+
       const { name, email } = foundRecord.metadata;
       console.log("Found unapproved chemical:", { name, email, id });
 
-    // Add to approved_chemicals
-    await index.namespace("approved_chemicals").upsert([
-      {
-        id: id,
-        values: dummyVector,
-        metadata: {
+      // Add to approved_chemicals
+      await index.namespace("approved_chemicals").upsert([
+        {
           id: id,
-          name: name,
-          approvedBy: adminEmail,
-          approvedAt: new Date().toISOString(),
-          requestedBy: email,
+          values: dummyVector,
+          metadata: {
+            id: id,
+            name: name,
+            approvedBy: adminEmail,
+            approvedAt: new Date().toISOString(),
+            requestedBy: email,
+          },
         },
-      },
-    ]);
+      ]);
       console.log("Added to approved_chemicals:", id);
 
       // Remove from unapproved_chemicals
@@ -1046,29 +1065,29 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
 
       // Add to approved_chemicals
       await index.namespace("approved_chemicals").upsert([
-            {
+        {
           id: id,
           values: dummyVector,
-              metadata: {
+          metadata: {
             id: id,
             name: name,
             approvedBy: adminEmail,
             approvedAt: new Date().toISOString(),
             requestedBy: email,
-              },
-            },
-          ]);
+          },
+        },
+      ]);
       console.log("Added to approved_chemicals:", id);
 
       // Remove from unapproved_chemicals
       await index.namespace("unapproved_chemicals").deleteOne(id);
       console.log("Removed from unapproved_chemicals:", id);
 
-    res.status(200).json({
-      success: true,
+      res.status(200).json({
+        success: true,
         message: "Chemical approved and added to approved_chemicals.",
-      id,
-    });
+        id,
+      });
     }
   } catch (error) {
     console.error("Error approving unapproved chemical:", error);
@@ -1084,10 +1103,14 @@ app.post("/api/unapproved-chemicals/reject", async (req, res) => {
   try {
     const { adminEmail, id } = req.body;
     console.log("Reject request received:", { adminEmail, id });
-    
-    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
+
+    const adminEmails = process.env.ADMIN_EMAILS
+      ? process.env.ADMIN_EMAILS.split(",")
+      : [];
     if (!adminEmail || !adminEmails.includes(adminEmail)) {
-      return res.status(403).json({ error: "Unauthorized. Admin access required." });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized. Admin access required." });
     }
     if (!id) {
       return res.status(400).json({ error: "Request ID is required" });
@@ -1104,9 +1127,9 @@ app.post("/api/unapproved-chemicals/reject", async (req, res) => {
       topK: 1,
       includeMetadata: true,
     });
-    
+
     console.log("Query response for rejection:", queryResponse);
-    
+
     let name, email;
 
     if (!queryResponse.matches || queryResponse.matches.length === 0) {
@@ -1116,20 +1139,28 @@ app.post("/api/unapproved-chemicals/reject", async (req, res) => {
         topK: 1000,
         includeMetadata: true,
       });
-      
-      const foundRecord = allResponse.matches?.find(match => match.id === id);
+
+      const foundRecord = allResponse.matches?.find((match) => match.id === id);
       if (!foundRecord) {
-      return res.status(404).json({ error: "Unapproved chemical not found" });
-    }
+        return res.status(404).json({ error: "Unapproved chemical not found" });
+      }
 
       name = foundRecord.metadata.name;
       email = foundRecord.metadata.email;
-      console.log("Found unapproved chemical for rejection:", { name, email, id });
+      console.log("Found unapproved chemical for rejection:", {
+        name,
+        email,
+        id,
+      });
     } else {
-    const request = queryResponse.matches[0];
+      const request = queryResponse.matches[0];
       name = request.metadata.name;
       email = request.metadata.email;
-      console.log("Found unapproved chemical for rejection:", { name, email, id });
+      console.log("Found unapproved chemical for rejection:", {
+        name,
+        email,
+        id,
+      });
     }
 
     // Remove from user's buy list
@@ -1137,7 +1168,9 @@ app.post("/api/unapproved-chemicals/reject", async (req, res) => {
       const buyProductsIndex = pinecone.index("products-you-buy");
       const buyDummyVector = new Array(1024).fill(0);
       buyDummyVector[0] = 1;
-      const buyQueryResponse = await buyProductsIndex.namespace("products").query({
+      const buyQueryResponse = await buyProductsIndex
+        .namespace("products")
+        .query({
           vector: buyDummyVector,
           filter: { email: { $eq: email } },
           topK: 1,
@@ -1325,11 +1358,29 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
     );
 
     if (queryResponse.matches && queryResponse.matches.length > 0) {
-      // Transform the data to match the frontend expectations
+      // Transform the data to match the new database format and frontend expectations
       const quotations = queryResponse.matches.map((match) => {
         const metadata = match.metadata;
+
+        // Format the submission date
+        let formattedDate = "N/A";
+        if (metadata.submissionDate) {
+          try {
+            const date = new Date(metadata.submissionDate);
+            const month = date.toLocaleString("en-US", { month: "short" });
+            const day = date.getDate();
+            const year = date.getFullYear();
+            formattedDate = `${month} ${day}, ${year}`;
+          } catch (error) {
+            console.log("Error formatting submission date:", error);
+            formattedDate = metadata.submissionDate;
+          }
+        }
+
         return {
           id: match.id,
+          orderId: metadata.orderId || "N/A",
+          supplierId: metadata.supplierId || "N/A",
           productName: metadata.product || "Unknown Product",
           unitRate: parseFloat(metadata.unitRate) || 0,
           cashRate: parseFloat(metadata.cashRate) || 0,
@@ -1337,8 +1388,9 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
           deliveryTime: metadata.deliveryTime || "N/A",
           additionalExpenses: metadata.additionalExpenses || "N/A",
           description: metadata.description || "No description available",
-          orderId: metadata.orderId || "N/A",
-          supplierId: metadata.supplierId || "N/A",
+          sellerContact: metadata.sellerContact || "N/A",
+          submissionDate: metadata.submissionDate || null,
+          formattedDate: formattedDate,
         };
       });
 
@@ -1435,20 +1487,60 @@ app.get("/api/inquiries/:userNumber", async (req, res) => {
       queryResponse.matches &&
       queryResponse.matches.length > 0
     ) {
-      // Transform the data to match the frontend expectations
+      // Transform the data to match the new database format and frontend expectations
       const inquiries = queryResponse.matches.map((match) => {
         const metadata = match.metadata;
+
+        // Parse suppliers if it's a string
+        let suppliers = [];
+        if (metadata.suppliers) {
+          try {
+            suppliers =
+              typeof metadata.suppliers === "string"
+                ? JSON.parse(metadata.suppliers)
+                : metadata.suppliers;
+          } catch (error) {
+            console.log("Error parsing suppliers:", error);
+            suppliers = [];
+          }
+        }
+
+        // Format the inquiry date
+        let formattedDate = "N/A";
+        if (metadata.inquiryDate) {
+          try {
+            const date = new Date(metadata.inquiryDate);
+            const month = date.toLocaleString("en-US", { month: "short" });
+            const day = date.getDate();
+            const year = date.getFullYear();
+            formattedDate = `${month} ${day}, ${year}`;
+          } catch (error) {
+            console.log("Error formatting date:", error);
+            formattedDate = metadata.inquiryDate;
+          }
+        }
+
         return {
           id: match.id,
           orderId: metadata.orderId || "N/A",
+          userNumber: metadata.userNumber || "N/A",
+          quantity: metadata.quantity || "N/A",
+          deliveryLocation: metadata.deliveryLocation || "N/A",
+          products: Array.isArray(metadata.products)
+            ? metadata.products
+            : metadata.products
+            ? [metadata.products]
+            : [],
+          suppliers: suppliers,
+          expectedResponses: metadata.expectedResponses || 0,
+          comparisonReportLink: metadata.comparisonReportLink || "#",
+          inquiryDate: metadata.inquiryDate || null,
+          formattedDate: formattedDate,
+          responseCount: metadata.responseCount || 0,
+          // For backward compatibility, also include the old productName field
           productName: Array.isArray(metadata.products)
             ? metadata.products.join(", ")
             : metadata.products || "Unknown Product",
-          deliveryLocation: metadata.deliveryLocation || "N/A",
-          quantity: metadata.quantity || "N/A",
-          comparisonReportLink: metadata.comparisonReportLink || "#",
-          expectedResponses: metadata.expectedResponses || 0,
-          responseCount: metadata.responseCount || 0,
         };
       });
 
@@ -1492,7 +1584,7 @@ app.get("/api/unapproved-chemicals", async (req, res) => {
     });
 
     console.log("Unapproved chemicals query response:", queryResponse);
-    
+
     const pendingRequests =
       queryResponse.matches?.map((match) => ({
         id: match.id, // Use the actual Pinecone record ID
@@ -1504,9 +1596,9 @@ app.get("/api/unapproved-chemicals", async (req, res) => {
         aiConfidence: match.metadata.aiConfidence,
         aiReasoning: match.metadata.aiReasoning,
       })) || [];
-      
+
     console.log("Pending requests found:", pendingRequests.length);
-    
+
     res.status(200).json({
       success: true,
       requests: pendingRequests,
@@ -1522,12 +1614,12 @@ app.get("/api/unapproved-chemicals", async (req, res) => {
 });
 
 // Get all referral data for admin dashboard
-app.get('/api/referrals', async (req, res) => {
+app.get("/api/referrals", async (req, res) => {
   try {
     const referrals = await getAllReferrals();
     res.json({ success: true, referrals });
   } catch (error) {
-    console.error('Error fetching referrals:', error);
+    console.error("Error fetching referrals:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
