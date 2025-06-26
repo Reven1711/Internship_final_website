@@ -125,6 +125,13 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Edit profile popup state
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
 
+  // Pincode edit state
+  const [isPincodeEditOpen, setIsPincodeEditOpen] = useState(false);
+  const [newPincode, setNewPincode] = useState('');
+  const [updatingPincode, setUpdatingPincode] = useState(false);
+  const [pincodeError, setPincodeError] = useState('');
+  const [pincodeSuccess, setPincodeSuccess] = useState('');
+
   // Quotation data state
   const [quotationData, setQuotationData] = useState<any[]>([]);
   const [quotationLoading, setQuotationLoading] = useState(false);
@@ -757,6 +764,71 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     setIsEditPopupOpen(false);
   };
 
+  // Pincode edit handlers
+  const handleEditPincode = () => {
+    setNewPincode(profileData?.["PIN Code"] || mockProfile.pin);
+    setPincodeError('');
+    setPincodeSuccess('');
+    setIsPincodeEditOpen(true);
+  };
+
+  const closePincodeEdit = () => {
+    setIsPincodeEditOpen(false);
+    setNewPincode('');
+    setPincodeError('');
+    setPincodeSuccess('');
+  };
+
+  const handleUpdatePincode = async () => {
+    if (!newPincode.trim()) {
+      setPincodeError('Pincode is required');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(newPincode.trim())) {
+      setPincodeError('Pincode must be exactly 6 digits');
+      return;
+    }
+
+    setUpdatingPincode(true);
+    setPincodeError('');
+
+    try {
+      const response = await fetch('/api/update-pincode', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: profileData?.["Seller Email Address"] || user?.email,
+          newPincode: newPincode.trim()
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPincodeSuccess(data.message);
+        // Update the local profile data
+        setProfileData(prev => ({
+          ...prev,
+          "PIN Code": newPincode.trim()
+        }));
+        // Close the modal after 2 seconds
+        setTimeout(() => {
+          closePincodeEdit();
+        }, 2000);
+      } else {
+        setPincodeError(data.error || 'Failed to update pincode');
+      }
+    } catch (error) {
+      console.error('Error updating pincode:', error);
+      setPincodeError('Failed to update pincode. Please try again.');
+    } finally {
+      setUpdatingPincode(false);
+    }
+  };
+
   // Use profileData if available, otherwise fall back to mock data
   const displayName = profileData?.["Seller Name"] || user?.displayName || mockProfile.fullName;
   const email = profileData?.["Seller Email Address"] || user?.email || mockProfile.gmail;
@@ -821,7 +893,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <div className="profile-edit-row">
                   <span className="info-value">{profileData?.["PIN Code"] || mockProfile.pin}</span>
                   <button 
-                    onClick={handleEditProfile}
+                    onClick={handleEditPincode}
                     className="edit-button"
                     title="Edit PIN Code"
                   >
@@ -2420,6 +2492,113 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         message="For assistance in updating your PIN code or phone number, please reach out to our AI Agent on WhatsApp."
         buttonText="Change via WhatsApp"
       />
+
+      {/* Pincode Edit Modal */}
+      {isPincodeEditOpen && (
+        <div className="modal-overlay" onClick={closePincodeEdit}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Update PIN Code</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={closePincodeEdit}
+                disabled={updatingPincode}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {pincodeSuccess && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  border: '1px solid #10b981',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {pincodeSuccess}
+                </div>
+              )}
+              
+              {pincodeError && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #ef4444',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {pincodeError}
+                </div>
+              )}
+              
+              {!pincodeSuccess && (
+                <>
+                  <p style={{ marginBottom: '16px', color: '#6b7280' }}>
+                    Enter your new 6-digit PIN code. This will update all your product records.
+                  </p>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      fontWeight: '500',
+                      color: '#374151'
+                    }}>
+                      New PIN Code:
+                    </label>
+                    <input
+                      type="text"
+                      value={newPincode}
+                      onChange={(e) => setNewPincode(e.target.value)}
+                      placeholder="Enter 6-digit PIN code"
+                      maxLength={6}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '16px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s'
+                      }}
+                      onKeyPress={(e) => {
+                        if (!/[0-9]/.test(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      disabled={updatingPincode}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="modal-cancel-btn"
+                onClick={closePincodeEdit}
+                disabled={updatingPincode}
+              >
+                {pincodeSuccess ? 'Close' : 'Cancel'}
+              </button>
+              {!pincodeSuccess && (
+                <button 
+                  className="modal-submit-btn"
+                  onClick={handleUpdatePincode}
+                  disabled={!newPincode.trim() || newPincode.length !== 6 || updatingPincode}
+                >
+                  {updatingPincode ? 'Updating...' : 'Update PIN Code'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

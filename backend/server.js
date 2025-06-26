@@ -1663,6 +1663,89 @@ app.get("/api/referrals", async (req, res) => {
   }
 });
 
+// Update pincode for all records with matching seller email
+app.put("/api/update-pincode", async (req, res) => {
+  try {
+    const { email, newPincode } = req.body;
+
+    if (!email || !newPincode) {
+      return res.status(400).json({
+        error: "Email and new pincode are required",
+      });
+    }
+
+    // Validate pincode format (6 digits)
+    if (!/^\d{6}$/.test(newPincode)) {
+      return res.status(400).json({
+        error: "Pincode must be exactly 6 digits",
+      });
+    }
+
+    console.log(`Updating pincode for email: ${email} to: ${newPincode}`);
+
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Query for all records with the matching seller email in the chemicals namespace
+    const queryResponse = await index.namespace("chemicals").query({
+      vector: dummyVector,
+      filter: {
+        "Seller Email Address": { $eq: email },
+      },
+      topK: 1000, // Get up to 1000 records
+      includeMetadata: true,
+    });
+
+    console.log(
+      `Found ${queryResponse.matches?.length || 0} records to update`
+    );
+
+    if (!queryResponse.matches || queryResponse.matches.length === 0) {
+      return res.status(404).json({
+        error: "No records found for this email address",
+      });
+    }
+
+    // Prepare records for update with new pincode
+    const recordsToUpdate = queryResponse.matches.map((match) => {
+      const updatedMetadata = {
+        ...match.metadata,
+        "PIN Code": newPincode,
+      };
+
+      return {
+        id: match.id,
+        values: dummyVector,
+        metadata: updatedMetadata,
+      };
+    });
+
+    // Update all records
+    await index.namespace("chemicals").upsert(recordsToUpdate);
+
+    console.log(
+      `Successfully updated pincode for ${recordsToUpdate.length} records`
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Pincode updated successfully for ${recordsToUpdate.length} records`,
+      updatedCount: recordsToUpdate.length,
+      newPincode: newPincode,
+    });
+  } catch (error) {
+    console.error("Error updating pincode:", error);
+    res.status(500).json({
+      error: "Failed to update pincode",
+      details: error.message,
+    });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
