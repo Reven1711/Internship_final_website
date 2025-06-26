@@ -118,8 +118,35 @@ async function searchSuppliersByCategory(category) {
   }
 }
 
+/**
+ * Get all referral data from the 'referrals' namespace
+ * @returns {Promise<Array>} - Array of referral data objects
+ */
+async function getAllReferrals() {
+  try {
+    const indexName = process.env.PINECONE_INDEX_NAME || "chemical-frontend";
+    const index = pinecone.index(indexName);
+
+    // Create a dummy vector with 1024 dimensions (all zeros)
+    const dummyVector = new Array(1024).fill(0);
+
+    // Query all records in the 'referrals' namespace
+    const queryResponse = await index.namespace("referrals").query({
+      vector: dummyVector,
+      topK: 1000, // Adjust as needed
+      includeMetadata: true,
+    });
+
+    return queryResponse.matches || [];
+  } catch (error) {
+    console.error("Error fetching referrals from Pinecone:", error);
+    throw new Error(`Failed to fetch referrals: ${error.message}`);
+  }
+}
+
 module.exports = {
   checkEmailExists,
   getAllSuppliers,
   searchSuppliersByCategory,
+  getAllReferrals,
 };

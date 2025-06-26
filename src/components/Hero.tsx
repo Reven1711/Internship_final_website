@@ -14,6 +14,9 @@ const Hero = () => {
   const closePopup = () => {
     setIsPopupOpen(false);
   };
+  const handleWhatsApp = () => {
+    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy', '_blank');
+  };
 
   const handleWatchDemo = () => {
     const howItWorksSection = document.getElementById('how-it-works');
@@ -50,7 +53,7 @@ const Hero = () => {
               {/* CTA Buttons */}
               <div className="hero-buttons">
                 <button 
-                  onClick={handleStartInquiry}
+                  onClick={handleWhatsApp}
                   className="hero-button-primary"
                 >
                   <MessageCircle className="button-icon button-icon-primary" />

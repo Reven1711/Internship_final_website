@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 import './Login.css';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import RegistrationMessage from './RegistrationMessage';
-import { buildApiUrl } from '../lib/config';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -47,7 +46,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
   // Function to check if email exists in Pinecone database
   const checkEmailInDatabase = async (email: string) => {
     try {
-      const response = await fetch(buildApiUrl('/api/check-email'), {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/check-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -4,6 +4,7 @@ const nodemailer = require("nodemailer");
 const { Pinecone } = require("@pinecone-database/pinecone");
 require("dotenv").config();
 const OpenAI = require("openai");
+const { getAllReferrals } = require('./utils/pinecone');
 
 const app = express();
 
@@ -325,7 +326,7 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
     }
 
     if (!aiApproved) {
-      return res.status(400).json({ error: "Product name was blocked by AI moderation as abusive, irrelevant, or nonsense." });
+      return res.status(400).json({ error: "Please enter a valid chemical or product." });
     }
 
     // Get the buy products index
@@ -1517,6 +1518,17 @@ app.get("/api/unapproved-chemicals", async (req, res) => {
       error: "Failed to fetch unapproved chemicals",
       details: error.message,
     });
+  }
+});
+
+// Get all referral data for admin dashboard
+app.get('/api/referrals', async (req, res) => {
+  try {
+    const referrals = await getAllReferrals();
+    res.json({ success: true, referrals });
+  } catch (error) {
+    console.error('Error fetching referrals:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

@@ -10,6 +10,15 @@ interface ProductRequest {
   submittedAt: string;
 }
 
+interface ReferralData {
+  id: string;
+  metadata: {
+    email: string;
+    referralCount: number;
+    [key: string]: any;
+  };
+}
+
 interface AdminDashboardProps {
   user?: {
     email?: string;
@@ -26,11 +35,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [adminEmail, setAdminEmail] = useState(user?.email || '');
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [referrals, setReferrals] = useState<ReferralData[]>([]);
+  const [referralLoading, setReferralLoading] = useState(true);
+  const [referralError, setReferralError] = useState('');
 
   useEffect(() => {
     if (user?.email) {
       setAdminEmail(user.email);
       fetchPendingRequests();
+      fetchReferrals();
     }
   }, [user?.email]);
 
@@ -55,6 +68,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       setError('Failed to fetch pending requests');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReferrals = async () => {
+    try {
+      setReferralLoading(true);
+      setReferralError('');
+      const response = await fetch('/api/referrals');
+      const data = await response.json();
+      if (data.success) {
+        setReferrals(data.referrals || []);
+      } else {
+        setReferralError(data.error || 'Failed to fetch referrals');
+      }
+    } catch (error) {
+      setReferralError('Failed to fetch referrals');
+    } finally {
+      setReferralLoading(false);
     }
   };
 
@@ -209,6 +240,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         >
           {loading ? 'Refreshing...' : 'Refresh List'}
         </button>
+      </div>
+
+      {/* Referrals Section */}
+      <div className="referrals-section">
+        <h2>User Referrals</h2>
+        {referralLoading ? (
+          <div>Loading referral data...</div>
+        ) : referralError ? (
+          <div className="error-message">{referralError}</div>
+        ) : referrals.length === 0 ? (
+          <div>No referral data found.</div>
+        ) : (
+          <table className="referrals-table" style={{ width: '100%', marginBottom: '2rem', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f3f4f6' }}>
+                <th style={{ padding: '8px', textAlign: 'left' }}>User Email</th>
+                <th style={{ padding: '8px', textAlign: 'left' }}>Referral Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {referrals.map((ref) => (
+                <tr key={ref.id} style={{ background: ref.metadata.referralCount >= 5 ? '#fef9c3' : 'white' }}>
+                  <td style={{ padding: '8px', fontWeight: ref.metadata.referralCount >= 5 ? 700 : 400, color: ref.metadata.referralCount >= 5 ? '#b45309' : undefined }}>
+                    {ref.metadata.email}
+                  </td>
+                  <td style={{ padding: '8px', fontWeight: ref.metadata.referralCount >= 5 ? 700 : 400, color: ref.metadata.referralCount >= 5 ? '#b45309' : undefined }}>
+                    {ref.metadata.referralCount}
+                    {ref.metadata.referralCount >= 5 && (
+                      <span style={{ marginLeft: 8, color: '#b45309', fontWeight: 700 }} title="Top Referrer">★</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="requests-container">

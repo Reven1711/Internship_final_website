@@ -3,7 +3,6 @@ import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Pho
 import './Profile.css';
 import Popup from '../components/ui/Popup';
 import { useNavigate } from 'react-router-dom';
-import { buildApiUrl } from '../lib/config';
 
 // Rupee symbol component
 const RupeeIcon = ({ size = 16, className = "" }) => (
@@ -79,6 +78,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [productToDelete, setProductToDelete] = useState<string>('');
   const [showDeleteSellModal, setShowDeleteSellModal] = useState(false);
   const [sellProductToDelete, setSellProductToDelete] = useState<string>('');
+  const [deleteBuySuccess, setDeleteBuySuccess] = useState(false);
+  const [deleteSellSuccess, setDeleteSellSuccess] = useState(false);
+  const [deleteBuyError, setDeleteBuyError] = useState('');
+  const [deleteSellError, setDeleteSellError] = useState('');
 
   // Add sell product modal state
   const [showAddSellModal, setShowAddSellModal] = useState(false);
@@ -126,7 +129,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   useEffect(() => {
     const fetchMasterProducts = async () => {
       try {
-        const response = await fetch(buildApiUrl('/api/approved-chemicals'));
+        const response = await fetch('/api/approved-chemicals');
         if (response.ok) {
           const data = await response.json();
           setMasterProductList(data.chemicals || []);
@@ -192,7 +195,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setBuyLoading(true);
-      const response = await fetch(buildApiUrl(`/api/buy-products/${encodeURIComponent(user.email)}`));
+      const response = await fetch(`/api/buy-products/${encodeURIComponent(user.email)}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -215,7 +218,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setSellLoading(true);
-      const response = await fetch(buildApiUrl('/api/suppliers/email'), {
+      const response = await fetch('/api/suppliers/email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,7 +247,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setProfileLoading(true);
-      const response = await fetch(buildApiUrl(`/api/profile/${encodeURIComponent(user.email)}`));
+      const response = await fetch(`/api/profile/${encodeURIComponent(user.email)}`);
       if (response.ok) {
         const data = await response.json();
         setProfileData(data.profile);
@@ -276,7 +279,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setQuotationLoading(true);
-      const response = await fetch(buildApiUrl(`/api/quotations/${encodeURIComponent(phoneNumber)}`));
+      const response = await fetch(`/api/quotations/${encodeURIComponent(phoneNumber)}`);
       const data = await response.json();
 
       console.log('Quotations API response:', data);
@@ -312,7 +315,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setInquiryLoading(true);
-      const response = await fetch(buildApiUrl(`/api/inquiries/${encodeURIComponent(phoneNumber)}`));
+      const response = await fetch(`/api/inquiries/${encodeURIComponent(phoneNumber)}`);
       const data = await response.json();
 
       console.log('Inquiries API response:', data);
@@ -361,7 +364,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Add new product function
   const handleAddProduct = async () => {
     if (!newProductName.trim() || !user?.email) {
-      setAddProductError('Please enter a product name.');
+      setAddProductError('Please enter a valid chemical or product.');
       return;
     }
 
@@ -381,7 +384,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddingProduct(true);
       setAddProductError('');
       setAddProductWarning('');
-      const response = await fetch(buildApiUrl('/api/buy-products/add'), {
+      const response = await fetch('/api/buy-products/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -426,7 +429,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddProductError('');
       setAddProductWarning('');
 
-      const response = await fetch(buildApiUrl('/api/product-requests/submit'), {
+      const response = await fetch('/api/product-requests/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -463,7 +466,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     if (!user?.email) return;
 
     try {
-      const response = await fetch(buildApiUrl('/api/buy-products/remove'), {
+      const response = await fetch('/api/buy-products/remove', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -477,15 +480,15 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       if (response.ok) {
         const data = await response.json();
         setBuyProducts(data.products);
-        // Show success message
-        alert('Product removed successfully!');
+        setDeleteBuySuccess(true);
+        setDeleteBuyError(''); // Always clear error on success
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to remove product');
+        setDeleteBuyError(errorData.error || 'Failed to remove product');
       }
     } catch (error) {
       console.error('Error removing product:', error);
-      alert('Failed to remove product');
+      setDeleteBuyError('Failed to remove product');
     }
   };
 
@@ -545,7 +548,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddingSellProduct(true);
       
       // Call backend API to add products (only valid ones)
-      const response = await fetch(buildApiUrl('/api/sell-products/add'), {
+      const response = await fetch('/api/sell-products/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -623,7 +626,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setUpdatingProduct(true);
       setEditProductError('');
       
-      const response = await fetch(buildApiUrl('/api/sell-products/update'), {
+      const response = await fetch('/api/sell-products/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -658,7 +661,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setDeletingSellProduct(productId);
-      const response = await fetch(buildApiUrl('/api/sell-products/delete'), {
+      const response = await fetch('/api/sell-products/delete', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -672,16 +675,15 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       if (response.ok) {
         // Refresh the sell products list
         await fetchSellProducts();
-        setShowDeleteSellModal(false);
-        setSellProductToDelete('');
-        alert('Product deleted successfully!');
+        setDeleteSellSuccess(true);
+        setDeleteSellError(''); // Always clear error on success
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to delete product');
+        setDeleteSellError(errorData.error || 'Failed to delete product');
       }
     } catch (error) {
       console.error('Error deleting sell product:', error);
-      alert('Failed to delete product');
+      setDeleteSellError('Failed to delete product');
     } finally {
       setDeletingSellProduct(null);
     }
@@ -2012,34 +2014,77 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <h3>Confirm Deletion</h3>
               <button 
                 className="modal-close-btn"
-                onClick={() => setShowDeleteBuyModal(false)}
+                onClick={() => {
+                  setShowDeleteBuyModal(false);
+                  setDeleteBuySuccess(false);
+                  setDeleteBuyError('');
+                }}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to remove <strong>"{productToDelete}"</strong> from your buy list?</p>
-              <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
-                This action cannot be undone.
-              </p>
+              {deleteBuySuccess && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  border: '1px solid #10b981',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  Product Deleted Successfully!
+                </div>
+              )}
+              
+              {deleteBuyError && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #ef4444',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {deleteBuyError}
+                </div>
+              )}
+              
+              {!deleteBuySuccess && (
+                <>
+                  <p>Are you sure you want to remove <strong>"{productToDelete}"</strong> from your buy list?</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                    This action cannot be undone.
+                  </p>
+                </>
+              )}
             </div>
             <div className="modal-footer">
               <button 
                 className="modal-cancel-btn"
-                onClick={() => setShowDeleteBuyModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="modal-submit-btn"
-                style={{ backgroundColor: '#dc3545' }}
                 onClick={() => {
-                  handleRemoveProduct(productToDelete);
                   setShowDeleteBuyModal(false);
+                  setDeleteBuySuccess(false);
+                  setDeleteBuyError('');
                 }}
               >
-                Remove Product
+                {deleteBuySuccess ? 'Close' : 'Cancel'}
               </button>
+              {!deleteBuySuccess && (
+                <button 
+                  className="modal-submit-btn"
+                  style={{ backgroundColor: '#dc3545' }}
+                  onClick={() => {
+                    handleRemoveProduct(productToDelete);
+                  }}
+                >
+                  Remove Product
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -2052,34 +2097,77 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <h3>Confirm Deletion</h3>
               <button 
                 className="modal-close-btn"
-                onClick={() => setShowDeleteSellModal(false)}
+                onClick={() => {
+                  setShowDeleteSellModal(false);
+                  setDeleteSellSuccess(false);
+                  setDeleteSellError('');
+                }}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to delete this product from your sell list?</p>
-              <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
-                This action cannot be undone.
-              </p>
+              {deleteSellSuccess && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  border: '1px solid #10b981',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  Product Deleted Successfully!
+                </div>
+              )}
+              
+              {!deleteSellSuccess && deleteSellError && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '6px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #ef4444',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  {deleteSellError}
+                </div>
+              )}
+              
+              {!deleteSellSuccess && (
+                <>
+                  <p>Are you sure you want to delete this product from your sell list?</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                    This action cannot be undone.
+                  </p>
+                </>
+              )}
             </div>
             <div className="modal-footer">
               <button 
                 className="modal-cancel-btn"
-                onClick={() => setShowDeleteSellModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="modal-submit-btn"
-                style={{ backgroundColor: '#dc3545' }}
                 onClick={() => {
-                  handleDeleteSellProduct(sellProductToDelete);
                   setShowDeleteSellModal(false);
+                  setDeleteSellSuccess(false);
+                  setDeleteSellError('');
                 }}
               >
-                Delete Product
+                {deleteSellSuccess ? 'Close' : 'Cancel'}
               </button>
+              {!deleteSellSuccess && (
+                <button 
+                  className="modal-submit-btn"
+                  style={{ backgroundColor: '#dc3545' }}
+                  onClick={() => {
+                    handleDeleteSellProduct(sellProductToDelete);
+                  }}
+                >
+                  Delete Product
+                </button>
+              )}
             </div>
           </div>
         </div>

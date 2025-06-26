@@ -41,6 +41,9 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
   const closePopup = () => {
     setIsPopupOpen(false);
   };
+  const handleWhatsApp = () => {
+    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy', '_blank');
+  };
 
   const scrollToSection = (sectionId: string) => {
     setIsMobileMenuOpen(false);
@@ -141,7 +144,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLoginClick, onLogout }) => {
                 <button onClick={() => handleNavSection('about')} className="nav-button">About</button>
                 <button onClick={() => handleNavSection('community')} className="nav-button">Community</button>
                 <button onClick={() => handleNavSection('contact')} className="nav-button">Contact Us</button>
-                <button onClick={handleStartInquiry} className="inquiry-button">
+                <button onClick={handleWhatsApp} className="inquiry-button">
                   <MessageCircle className="inquiry-button-icon" />
                   <span>Start Inquiry</span>
                 </button>

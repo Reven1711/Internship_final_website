@@ -7,7 +7,9 @@ interface RegistrationMessageProps {
   onClose: () => void;
   email: string;
 }
-
+const handleWhatsApp = () => {
+  window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy', '_blank');
+};
 const RegistrationMessage: React.FC<RegistrationMessageProps> = ({ isOpen, onClose, email }) => {
   const handleWhatsAppRegistration = () => {
     const message = `Hello Sourceasy, I would like to register my business. My email is ${email}.`;
@@ -37,7 +39,7 @@ const RegistrationMessage: React.FC<RegistrationMessageProps> = ({ isOpen, onClo
               To access Sourceasy services, please register your business with us.
             </p>
             <button 
-              onClick={handleWhatsAppRegistration}
+              onClick={handleWhatsApp}
               className="registration-whatsapp-button"
             >
               <MessageCircle className="whatsapp-button-icon" />

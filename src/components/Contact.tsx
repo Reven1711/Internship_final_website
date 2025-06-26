@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MessageCircle, Mail, Phone, MapPin, Instagram, Linkedin, Facebook } from 'lucide-react';
 import './Contact.css';
-import { buildApiUrl } from '../lib/config';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -30,7 +29,7 @@ const Contact = () => {
 
     try {
       console.log('Submitting form data:', formData);
-      const response = await fetch(buildApiUrl('/api/send-email'), {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +64,7 @@ const Contact = () => {
   };
 
   const handleWhatsApp = () => {
-    window.open('https://wa.me/14155238886?text=Hello%20Sourceasy,%20I%20have%20a%20question', '_blank');
+    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy,%20I%20have%20a%20question', '_blank');
   };
 
   const handleSocialClick = (platform: string) => {
@@ -236,7 +235,7 @@ const Contact = () => {
                     </div>
                     <div className="info-content">
                       <p className="info-label">Trade Enquiry</p>
-                      <p className="info-value">+91 98765 43210</p>
+                      <p className="info-value">+91 635 2615629</p>
                     </div>
                   </div>
                   
@@ -291,7 +290,7 @@ const Contact = () => {
                 <p className="supplier-description">
                   Want to join our supplier network? Register your chemical business and start receiving qualified leads.
                 </p>
-                <button className="supplier-button">
+                <button className="supplier-button" onClick={handleWhatsApp}>
                   Register as Supplier
                 </button>
               </div>
