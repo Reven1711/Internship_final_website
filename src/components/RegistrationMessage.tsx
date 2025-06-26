@@ -8,7 +8,7 @@ interface RegistrationMessageProps {
   email: string;
 }
 const handleWhatsApp = () => {
-  window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy', '_blank');
+  window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy,%20I%20would%20like%20to%20register%20as%20a%20supplier', '_blank');
 };
 const RegistrationMessage: React.FC<RegistrationMessageProps> = ({ isOpen, onClose, email }) => {
   const handleWhatsAppRegistration = () => {

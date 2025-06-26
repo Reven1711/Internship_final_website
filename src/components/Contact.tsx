@@ -64,7 +64,10 @@ const Contact = () => {
   };
 
   const handleWhatsApp = () => {
-    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy,%20I%20have%20a%20question', '_blank');
+    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy,%20I%20would%20like%20to%20buy%20', '_blank');
+  };
+  const handleWhatsAppSupp = () => {
+    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy,%20I%20would%20like%20to%20register%20as%20a%20supplier', '_blank');
   };
 
   const handleSocialClick = (platform: string) => {
@@ -245,7 +248,7 @@ const Contact = () => {
                     </div>
                     <div className="info-content">
                       <p className="info-label">Email</p>
-                      <p className="info-value">aidhandho@gmail.com</p>
+                      <p className="info-value">nirav@sourceasy.ai</p>
                     </div>
                   </div>
                   
@@ -290,7 +293,7 @@ const Contact = () => {
                 <p className="supplier-description">
                   Want to join our supplier network? Register your chemical business and start receiving qualified leads.
                 </p>
-                <button className="supplier-button" onClick={handleWhatsApp}>
+                <button className="supplier-button" onClick={handleWhatsAppSupp}>
                   Register as Supplier
                 </button>
               </div>

@@ -43,7 +43,7 @@ const AIAgent = () => {
     setIsPopupOpen(true);
   };
   const handleWhatsApp = () => {
-    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy', '_blank');
+    window.open('https://wa.me/+916352615629?text=Hello%20Sourceasy,%20I%20would%20like%20to%20buy%20', '_blank');
   };
 
   const closePopup = () => {
