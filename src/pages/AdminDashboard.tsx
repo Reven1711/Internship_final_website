@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, XCircle, Clock, CheckCircle, X as XIcon } from 'lucide-react';
+import { X, Check, XCircle, Clock, CheckCircle, X as XIcon, RefreshCw } from 'lucide-react';
 import './AdminDashboard.css';
 
 interface ProductRequest {
@@ -38,6 +38,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [referrals, setReferrals] = useState<ReferralData[]>([]);
   const [referralLoading, setReferralLoading] = useState(true);
   const [referralError, setReferralError] = useState('');
+  const [rewardGiven, setRewardGiven] = useState<{ [phone: string]: boolean }>({});
+  const [filter, setFilter] = useState<'all' | 'fiveplus' | 'rewarded'>('all');
+  const [referralDisplayCount, setReferralDisplayCount] = useState(5);
+  const [editProductName, setEditProductName] = useState<string>('');
 
   useEffect(() => {
     if (user?.email) {
@@ -77,6 +81,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       setReferralError('');
       const response = await fetch('/api/referrals');
       const data = await response.json();
+      console.log('Fetched referrals from backend:', data);
       if (data.success) {
         setReferrals(data.referrals || []);
       } else {
@@ -87,6 +92,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     } finally {
       setReferralLoading(false);
     }
+  };
+
+  const handleOpenReviewModal = (request: ProductRequest) => {
+    setSelectedRequest(request);
+    setEditProductName(request.name);
   };
 
   const handleApprove = async () => {
@@ -103,6 +113,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           adminEmail: adminEmail,
           id: selectedRequest.id,
           reviewNotes: reviewNotes,
+          name: editProductName,
         }),
       });
 
@@ -190,136 +201,183 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="admin-dashboard">
-        <div className="loading">Loading pending requests...</div>
-      </div>
-    );
-  }
+  // Filtering logic
+  const filteredReferrals = referrals.filter(ref => {
+    const phone = ref.metadata.phone || ref.id.replace('whatsapp:+', '');
+    if (filter === 'fiveplus') return ref.metadata.referralCount >= 5;
+    if (filter === 'rewarded') return rewardGiven[phone];
+    return true;
+  })
+  // Order by most referrals
+  .sort((a, b) => (b.metadata.referralCount || 0) - (a.metadata.referralCount || 0));
 
-  if (error) {
-    return (
-      <div className="admin-dashboard">
-        <div className="error-message">{error}</div>
-      </div>
-    );
-  }
+  const visibleReferrals = filteredReferrals.slice(0, referralDisplayCount);
+  const canShowMore = referralDisplayCount < filteredReferrals.length;
 
-  if (pendingRequests.length === 0) {
-    return (
-      <div className="admin-dashboard">
-        <div className="no-requests">
-          <CheckCircle size={48} />
-          <h3>No Pending Requests</h3>
-          <p>All product requests have been reviewed or there are none to show.</p>
-        </div>
-      </div>
-    );
-  }
+  // Add a refresh handler
+  const handleRefresh = () => {
+    fetchPendingRequests();
+    fetchReferrals();
+  };
 
   return (
-    <div className="admin-dashboard">
-      <div className="admin-header">
-        <h1>Admin Dashboard - Product Requests</h1>
-        <p>Manage pending product requests from users</p>
-        <button 
-          onClick={fetchPendingRequests}
-          disabled={loading}
+    <div className="admin-dashboard" style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' }}>
+      {/* Top bar with refresh button */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <button
+          onClick={handleRefresh}
+          title="Refresh Referrals & Requests"
           style={{
-            marginTop: '10px',
-            padding: '8px 16px',
-            backgroundColor: '#2563eb',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: '14px',
-            opacity: loading ? 0.6 : 1
+            background: '#f3f4f6',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            padding: 8,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            transition: 'background 0.2s',
+            marginRight: 4,
           }}
         >
-          {loading ? 'Refreshing...' : 'Refresh List'}
+          <RefreshCw size={20} style={{ marginRight: 4 }} />
+          <span style={{ fontWeight: 500, fontSize: 15, color: '#1e293b' }}>Refresh</span>
         </button>
       </div>
-
-      {/* Referrals Section */}
-      <div className="referrals-section">
-        <h2>User Referrals</h2>
-        {referralLoading ? (
-          <div>Loading referral data...</div>
-        ) : referralError ? (
-          <div className="error-message">{referralError}</div>
-        ) : referrals.length === 0 ? (
-          <div>No referral data found.</div>
-        ) : (
-          <table className="referrals-table" style={{ width: '100%', marginBottom: '2rem', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f3f4f6' }}>
-                <th style={{ padding: '8px', textAlign: 'left' }}>User Email</th>
-                <th style={{ padding: '8px', textAlign: 'left' }}>Referral Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              {referrals.map((ref) => (
-                <tr key={ref.id} style={{ background: ref.metadata.referralCount >= 5 ? '#fef9c3' : 'white' }}>
-                  <td style={{ padding: '8px', fontWeight: ref.metadata.referralCount >= 5 ? 700 : 400, color: ref.metadata.referralCount >= 5 ? '#b45309' : undefined }}>
-                    {ref.metadata.email}
-                  </td>
-                  <td style={{ padding: '8px', fontWeight: ref.metadata.referralCount >= 5 ? 700 : 400, color: ref.metadata.referralCount >= 5 ? '#b45309' : undefined }}>
-                    {ref.metadata.referralCount}
-                    {ref.metadata.referralCount >= 5 && (
-                      <span style={{ marginLeft: 8, color: '#b45309', fontWeight: 700 }} title="Top Referrer">★</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="requests-container">
-        <div className="requests-grid">
-          {pendingRequests.map((request) => (
-            <div key={request.id} className="request-card">
-              <div className="request-header">
-                <h3>{request.name}</h3>
-                <span className="request-id">#{request.id.slice(-8)}</span>
+      <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* Referrals Section - Modern Card UI in Dashboard Theme */}
+        <div className="referrals-section" style={{ flex: '1 1 350px', maxWidth: 400, minWidth: 320, background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, marginBottom: 32, border: '1px solid #e2e8f0' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, color: '#1e293b', letterSpacing: 0.5 }}>User Referrals</h2>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <button onClick={() => { setFilter('all'); setReferralDisplayCount(5); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: filter === 'all' ? '#1d4ed8' : '#f3f4f6', color: filter === 'all' ? '#fff' : '#1e293b', fontWeight: 500, fontSize: 14, transition: 'background 0.2s' }}>All</button>
+            <button onClick={() => { setFilter('fiveplus'); setReferralDisplayCount(5); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: filter === 'fiveplus' ? '#1d4ed8' : '#f3f4f6', color: filter === 'fiveplus' ? '#fff' : '#1e293b', fontWeight: 500, fontSize: 14, transition: 'background 0.2s' }}>5+ Referrals</button>
+            <button onClick={() => { setFilter('rewarded'); setReferralDisplayCount(5); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: filter === 'rewarded' ? '#1d4ed8' : '#f3f4f6', color: filter === 'rewarded' ? '#fff' : '#1e293b', fontWeight: 500, fontSize: 14, transition: 'background 0.2s' }}>Reward Given</button>
+          </div>
+          {referralLoading ? (
+            <div style={{ color: '#64748b' }}>Loading referral data...</div>
+          ) : referralError ? (
+            <div className="error-message" style={{ color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: 8 }}>{referralError}</div>
+          ) : visibleReferrals.length === 0 ? (
+            <div style={{ color: '#64748b' }}>No referral data found.</div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {visibleReferrals.map((ref) => {
+                  const phone = ref.metadata.phone || ref.id.replace('whatsapp:+', '');
+                  const count = ref.metadata.referralCount;
+                  const isRewarded = rewardGiven[phone] || false;
+                  return (
+                    <div key={ref.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      background: isRewarded ? 'rgba(16,185,129,0.08)' : '#f9fafb',
+                      borderRadius: 10,
+                      boxShadow: isRewarded ? '0 2px 8px rgba(16,185,129,0.08)' : '0 1px 4px rgba(0,0,0,0.04)',
+                      padding: '10px 14px',
+                      border: count >= 5 ? '2px solid #facc15' : '1px solid #e2e8f0',
+                      position: 'relative',
+                      minHeight: 44,
+                      transition: 'box-shadow 0.2s, background 0.2s',
+                    }}>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ color: '#1e293b', fontWeight: 600, fontSize: 15, letterSpacing: 0.2 }}>{phone}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                          <span style={{ fontSize: 13, color: count >= 5 ? '#b45309' : '#2563eb', fontWeight: 600, background: count >= 5 ? 'rgba(250,204,21,0.13)' : 'rgba(37,99,235,0.10)', borderRadius: 8, padding: '2px 8px' }}>
+                            {count} Referral{count !== 1 ? 's' : ''}
+                            {count >= 5 && <span style={{ marginLeft: 6, color: '#facc15', fontWeight: 700 }} title="Top Referrer">★</span>}
+                          </span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setRewardGiven(prev => ({ ...prev, [phone]: !isRewarded }))}
+                        style={{
+                          background: isRewarded ? 'linear-gradient(135deg,#10b981,#059669)' : '#f3f4f6',
+                          color: isRewarded ? '#fff' : '#059669',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '6px 12px',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          boxShadow: isRewarded ? '0 1px 4px rgba(16,185,129,0.13)' : 'none',
+                          transition: 'background 0.2s, color 0.2s',
+                          outline: isRewarded ? '2px solid #10b981' : 'none',
+                        }}
+                      >
+                        {isRewarded ? 'Rewarded' : 'Mark Reward'}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-              
-              <div className="request-details">
-                <div className="detail-item">
-                  <label>Requested by:</label>
-                  <span>{request.email}</span>
-                </div>
-                <div className="detail-item">
-                  <label>Status:</label>
-                  <span>{request.status}</span>
-                </div>
-                <div className="detail-item">
-                  <label>Submitted:</label>
-                  <span>{formatDate(request.submittedAt)}</span>
-                </div>
-              </div>
-
-              <div className="request-actions">
+              {canShowMore && (
                 <button
-                  className="action-btn approve-btn"
-                  onClick={() => setSelectedRequest(request)}
+                  onClick={() => setReferralDisplayCount(c => c + 5)}
+                  style={{ marginTop: 18, padding: '10px 24px', borderRadius: 10, border: 'none', background: '#f3f4f6', color: '#1e293b', fontWeight: 600, fontSize: 15, cursor: 'pointer', alignSelf: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
                 >
-                  <Check size={16} />
-                  Approve
+                  Show More
                 </button>
-                <button
-                  className="action-btn reject-btn"
-                  onClick={() => setSelectedRequest(request)}
-                >
-                  <XCircle size={16} />
-                  Reject
-                </button>
-              </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Product Requests Section */}
+        <div className="requests-container" style={{ flex: '2 1 600px', minWidth: 340 }}>
+          {loading ? (
+            <div className="loading">Loading pending requests...</div>
+          ) : error ? (
+            <div className="error-message">{error}</div>
+          ) : pendingRequests.length === 0 ? (
+            <div className="no-requests">
+              <CheckCircle size={48} />
+              <h3>No Pending Requests</h3>
+              <p>All product requests have been reviewed or there are none to show.</p>
             </div>
-          ))}
+          ) : (
+            <div className="requests-grid">
+              {pendingRequests.map((request) => (
+                <div key={request.id} className="request-card">
+                  <div className="request-header">
+                    <h3>{request.name}</h3>
+                    <span className="request-id">#{request.id.slice(-8)}</span>
+                  </div>
+                  
+                  <div className="request-details">
+                    <div className="detail-item">
+                      <label>Requested by:</label>
+                      <span>{request.email}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Status:</label>
+                      <span>{request.status}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Submitted:</label>
+                      <span>{formatDate(request.submittedAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="request-actions">
+                    <button
+                      className="action-btn approve-btn"
+                      onClick={() => handleOpenReviewModal(request)}
+                    >
+                      <Check size={16} />
+                      Approve
+                    </button>
+                    <button
+                      className="action-btn reject-btn"
+                      onClick={() => setSelectedRequest(request)}
+                    >
+                      <XCircle size={16} />
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -354,7 +412,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               )}
               
               <div className="review-details">
-                <h4>{selectedRequest.name}</h4>
+                <label htmlFor="editProductName" style={{ fontWeight: 600, marginBottom: 4 }}>Product Name:</label>
+                <input
+                  id="editProductName"
+                  type="text"
+                  value={editProductName}
+                  onChange={e => setEditProductName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: '1px solid #e5e7eb',
+                    marginBottom: 10,
+                    fontSize: 16,
+                    fontWeight: 500,
+                  }}
+                />
                 <p><strong>Requested by:</strong> {selectedRequest.email}</p>
                 <p><strong>Status:</strong> {selectedRequest.status}</p>
                 <p><strong>Submitted:</strong> {formatDate(selectedRequest.submittedAt)}</p>

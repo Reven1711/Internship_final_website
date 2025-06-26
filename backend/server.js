@@ -988,8 +988,8 @@ app.get("/api/unapproved-chemicals/pending", async (req, res) => {
 // Approve an unapproved chemical (admin only)
 app.post("/api/unapproved-chemicals/approve", async (req, res) => {
   try {
-    const { adminEmail, id } = req.body;
-    console.log("Approve request received:", { adminEmail, id });
+    const { adminEmail, id, name: correctedName } = req.body;
+    console.log("Approve request received:", { adminEmail, id, correctedName });
 
     const adminEmails = process.env.ADMIN_EMAILS
       ? process.env.ADMIN_EMAILS.split(",")
@@ -1017,6 +1017,8 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
 
     console.log("Query response for approval:", queryResponse);
 
+    let name, email;
+
     if (!queryResponse.matches || queryResponse.matches.length === 0) {
       // Try without filter - maybe the ID is the record ID itself
       const allResponse = await index.namespace("unapproved_chemicals").query({
@@ -1030,24 +1032,35 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
         return res.status(404).json({ error: "Unapproved chemical not found" });
       }
 
-      const { name, email } = foundRecord.metadata;
+      name = foundRecord.metadata.name;
+      email = foundRecord.metadata.email;
       console.log("Found unapproved chemical:", { name, email, id });
 
-      // Add to approved_chemicals
+      const finalName = correctedName || name;
+      // Add to approved_chemicals (force overwrite)
+      await index.namespace("approved_chemicals").deleteOne(id); // Ensure old record is removed
       await index.namespace("approved_chemicals").upsert([
         {
           id: id,
           values: dummyVector,
           metadata: {
             id: id,
-            name: name,
+            name: finalName,
             approvedBy: adminEmail,
             approvedAt: new Date().toISOString(),
             requestedBy: email,
           },
         },
       ]);
-      console.log("Added to approved_chemicals:", id);
+      console.log("Added to approved_chemicals (forced overwrite):", id, finalName);
+      // Fetch and log the record to verify
+      const verifyResponse = await index.namespace("approved_chemicals").query({
+        vector: dummyVector,
+        filter: { id: { $eq: id } },
+        topK: 1,
+        includeMetadata: true,
+      });
+      console.log("Verified approved_chemicals record:", JSON.stringify(verifyResponse, null, 2));
 
       // Remove from unapproved_chemicals
       await index.namespace("unapproved_chemicals").deleteOne(id);
@@ -1060,24 +1073,35 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
       });
     } else {
       const request = queryResponse.matches[0];
-      const { name, email } = request.metadata;
+      name = request.metadata.name;
+      email = request.metadata.email;
       console.log("Found unapproved chemical:", { name, email, id });
 
-      // Add to approved_chemicals
+      const finalName = correctedName || name;
+      // Add to approved_chemicals (force overwrite)
+      await index.namespace("approved_chemicals").deleteOne(id); // Ensure old record is removed
       await index.namespace("approved_chemicals").upsert([
         {
           id: id,
           values: dummyVector,
           metadata: {
             id: id,
-            name: name,
+            name: finalName,
             approvedBy: adminEmail,
             approvedAt: new Date().toISOString(),
             requestedBy: email,
           },
         },
       ]);
-      console.log("Added to approved_chemicals:", id);
+      console.log("Added to approved_chemicals (forced overwrite):", id, finalName);
+      // Fetch and log the record to verify
+      const verifyResponse = await index.namespace("approved_chemicals").query({
+        vector: dummyVector,
+        filter: { id: { $eq: id } },
+        topK: 1,
+        includeMetadata: true,
+      });
+      console.log("Verified approved_chemicals record:", JSON.stringify(verifyResponse, null, 2));
 
       // Remove from unapproved_chemicals
       await index.namespace("unapproved_chemicals").deleteOne(id);
@@ -1617,6 +1641,7 @@ app.get("/api/unapproved-chemicals", async (req, res) => {
 app.get("/api/referrals", async (req, res) => {
   try {
     const referrals = await getAllReferrals();
+    console.log('Sending referrals to frontend:', referrals); // Debug print
     res.json({ success: true, referrals });
   } catch (error) {
     console.error("Error fetching referrals:", error);

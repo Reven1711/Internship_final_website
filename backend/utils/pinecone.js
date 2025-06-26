@@ -124,19 +124,14 @@ async function searchSuppliersByCategory(category) {
  */
 async function getAllReferrals() {
   try {
-    const indexName = process.env.PINECONE_INDEX_NAME || "chemical-frontend";
-    const index = pinecone.index(indexName);
-
-    // Create a dummy vector with 1024 dimensions (all zeros)
-    const dummyVector = new Array(1024).fill(0);
-
-    // Query all records in the 'referrals' namespace
+    // Always use chemicals-new for referrals
+    const index = pinecone.index("chemicals-new");
+    const dummyVector = new Array(1536).fill(0);
     const queryResponse = await index.namespace("referrals").query({
       vector: dummyVector,
       topK: 1000, // Adjust as needed
       includeMetadata: true,
     });
-
     return queryResponse.matches || [];
   } catch (error) {
     console.error("Error fetching referrals from Pinecone:", error);
