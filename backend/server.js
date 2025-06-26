@@ -55,11 +55,11 @@ app.post("/api/check-email", async (req, res) => {
 
     // Get the index with the correct namespace
     const index = pinecone.index(
-      process.env.PINECONE_INDEX_NAME || "chemical-frontend"
+      process.env.PINECONE_INDEX_NAME || "chemicals-new"
     );
 
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // Query the index for the email in the "chemicals" namespace
@@ -121,11 +121,11 @@ app.post("/api/suppliers/email", async (req, res) => {
 
     // Get the index with the correct namespace
     const index = pinecone.index(
-      process.env.PINECONE_INDEX_NAME || "chemical-frontend"
+      process.env.PINECONE_INDEX_NAME || "chemicals-new"
     );
 
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // Query the index for all records with the email in the "chemicals" namespace
@@ -209,8 +209,8 @@ app.get("/api/buy-products/:email", async (req, res) => {
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
 
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // Query the index for the email in the "products" namespace
@@ -345,7 +345,7 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
 
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
-    const dummyVector = new Array(1024).fill(0);
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // First, check if user already has a record in the "products" namespace
@@ -462,8 +462,8 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
 
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // Find user's record in the "products" namespace
@@ -590,10 +590,10 @@ app.get("/api/profile/:email", async (req, res) => {
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
     }
-    // Get the chemical-frontend index
-    const index = pinecone.index("chemical-frontend");
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
     // Query the index for the email in the "chemicals" namespace
     const queryResponse = await index.namespace("chemicals").query({
@@ -643,11 +643,11 @@ app.post("/api/sell-products/add", async (req, res) => {
       });
     }
 
-    // Get the chemical-frontend index
-    const index = pinecone.index("chemical-frontend");
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
 
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // First, get the seller's profile data to use for the new products
@@ -774,11 +774,11 @@ app.put("/api/sell-products/update", async (req, res) => {
       });
     }
 
-    // Get the chemical-frontend index
-    const index = pinecone.index("chemical-frontend");
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
 
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // First, get the existing product to preserve seller information
@@ -860,8 +860,8 @@ app.delete("/api/sell-products/delete", async (req, res) => {
       });
     }
 
-    // Get the chemical-frontend index
-    const index = pinecone.index("chemical-frontend");
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
 
     // Delete the product from the database
     await index.namespace("chemicals").deleteOne(productId);
@@ -1052,7 +1052,11 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
           },
         },
       ]);
-      console.log("Added to approved_chemicals (forced overwrite):", id, finalName);
+      console.log(
+        "Added to approved_chemicals (forced overwrite):",
+        id,
+        finalName
+      );
       // Fetch and log the record to verify
       const verifyResponse = await index.namespace("approved_chemicals").query({
         vector: dummyVector,
@@ -1060,7 +1064,10 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
         topK: 1,
         includeMetadata: true,
       });
-      console.log("Verified approved_chemicals record:", JSON.stringify(verifyResponse, null, 2));
+      console.log(
+        "Verified approved_chemicals record:",
+        JSON.stringify(verifyResponse, null, 2)
+      );
 
       // Remove from unapproved_chemicals
       await index.namespace("unapproved_chemicals").deleteOne(id);
@@ -1093,7 +1100,11 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
           },
         },
       ]);
-      console.log("Added to approved_chemicals (forced overwrite):", id, finalName);
+      console.log(
+        "Added to approved_chemicals (forced overwrite):",
+        id,
+        finalName
+      );
       // Fetch and log the record to verify
       const verifyResponse = await index.namespace("approved_chemicals").query({
         vector: dummyVector,
@@ -1101,7 +1112,10 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
         topK: 1,
         includeMetadata: true,
       });
-      console.log("Verified approved_chemicals record:", JSON.stringify(verifyResponse, null, 2));
+      console.log(
+        "Verified approved_chemicals record:",
+        JSON.stringify(verifyResponse, null, 2)
+      );
 
       // Remove from unapproved_chemicals
       await index.namespace("unapproved_chemicals").deleteOne(id);
@@ -1190,7 +1204,7 @@ app.post("/api/unapproved-chemicals/reject", async (req, res) => {
     // Remove from user's buy list
     try {
       const buyProductsIndex = pinecone.index("products-you-buy");
-      const buyDummyVector = new Array(1024).fill(0);
+      const buyDummyVector = new Array(1536).fill(0);
       buyDummyVector[0] = 1;
       const buyQueryResponse = await buyProductsIndex
         .namespace("products")
@@ -1271,8 +1285,8 @@ app.get("/api/product-requests/user/:email", async (req, res) => {
     // Get the chemicals-new index
     const index = pinecone.index("chemicals-new");
 
-    // Create a dummy vector with 1024 dimensions (first element is 1, rest are 0)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
     // Query for all requests by this user
@@ -1641,7 +1655,7 @@ app.get("/api/unapproved-chemicals", async (req, res) => {
 app.get("/api/referrals", async (req, res) => {
   try {
     const referrals = await getAllReferrals();
-    console.log('Sending referrals to frontend:', referrals); // Debug print
+    console.log("Sending referrals to frontend:", referrals); // Debug print
     res.json({ success: true, referrals });
   } catch (error) {
     console.error("Error fetching referrals:", error);
@@ -1658,6 +1672,6 @@ app.listen(PORT, () => {
   });
   console.log("Pinecone configuration:", {
     apiKey: process.env.PINECONE_API_KEY ? "****" : "not set",
-    indexName: process.env.PINECONE_INDEX_NAME || "chemical-frontend",
+    indexName: process.env.PINECONE_INDEX_NAME || "chemicals-new",
   });
 });

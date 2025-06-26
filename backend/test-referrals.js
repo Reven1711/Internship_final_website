@@ -6,9 +6,9 @@ async function printReferrals() {
     const pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY,
     });
-    const indexName = process.env.PINECONE_INDEX_NAME || "chemical-frontend";
+    const indexName = process.env.PINECONE_INDEX_NAME || "chemicals-new";
     const index = pinecone.index(indexName);
-    const dummyVector = new Array(1024).fill(0);
+    const dummyVector = new Array(1536).fill(0);
     const queryResponse = await index.namespace("referrals").query({
       vector: dummyVector,
       topK: 1000,
@@ -29,4 +29,4 @@ async function printReferrals() {
   }
 }
 
-printReferrals(); 
+printReferrals();

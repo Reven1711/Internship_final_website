@@ -12,6 +12,7 @@ A modern web application for chemical trading with AI-powered moderation and sup
 ## 🔒 Security Configuration
 
 ### Frontend Environment Variables
+
 Create a `.env` file in the root directory with the following variables:
 
 ```env
@@ -32,12 +33,13 @@ VITE_ADMIN_EMAILS=meet.r@ahduni.edu.in,jay.r1@ahduni.edu.in
 ```
 
 ### Backend Environment Variables
+
 Create a `.env` file in the `backend` directory with the following variables:
 
 ```env
 # Pinecone Configuration
 PINECONE_API_KEY=your_pinecone_api_key_here
-PINECONE_INDEX_NAME=chemical-frontend
+PINECONE_INDEX_NAME=chemicals-new
 
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
@@ -55,6 +57,7 @@ NODE_ENV=development
 ```
 
 ### Security Notes
+
 - **Never commit `.env` files** - they are already in `.gitignore`
 - **Use Gmail App Passwords** for email authentication, not your regular password
 - **Rotate API keys regularly** for production environments

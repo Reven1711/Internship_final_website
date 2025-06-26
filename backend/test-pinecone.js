@@ -17,14 +17,14 @@ async function testPineconeConnection() {
       apiKey: process.env.PINECONE_API_KEY,
     });
 
-    const indexName = process.env.PINECONE_INDEX_NAME || "chemical-frontend";
+    const indexName = process.env.PINECONE_INDEX_NAME || "chemicals-new";
     console.log(`Using index: ${indexName}`);
 
     // Get the index
     const index = pinecone.index(indexName);
 
-    // Create a dummy vector with 1024 dimensions (all zeros)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (all zeros)
+    const dummyVector = new Array(1536).fill(0);
 
     // Test a simple query in the chemicals namespace
     console.log("Testing basic query in chemicals namespace...");

@@ -12,11 +12,11 @@ const pinecone = new Pinecone({
  */
 async function checkEmailExists(email) {
   try {
-    const indexName = process.env.PINECONE_INDEX_NAME || "chemical-frontend";
+    const indexName = process.env.PINECONE_INDEX_NAME || "chemicals-new";
     const index = pinecone.index(indexName);
 
-    // Create a dummy vector with 1024 dimensions (all zeros)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (all zeros)
+    const dummyVector = new Array(1536).fill(0);
 
     // Query the index for the email in the "chemicals" namespace
     const queryResponse = await index.namespace("chemicals").query({
@@ -69,11 +69,11 @@ async function checkEmailExists(email) {
  */
 async function getAllSuppliers() {
   try {
-    const indexName = process.env.PINECONE_INDEX_NAME || "chemical-frontend";
+    const indexName = process.env.PINECONE_INDEX_NAME || "chemicals-new";
     const index = pinecone.index(indexName);
 
-    // Create a dummy vector with 1024 dimensions (all zeros)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (all zeros)
+    const dummyVector = new Array(1536).fill(0);
 
     // Query all records in the "chemicals" namespace
     const queryResponse = await index.namespace("chemicals").query({
@@ -96,11 +96,11 @@ async function getAllSuppliers() {
  */
 async function searchSuppliersByCategory(category) {
   try {
-    const indexName = process.env.PINECONE_INDEX_NAME || "chemical-frontend";
+    const indexName = process.env.PINECONE_INDEX_NAME || "chemicals-new";
     const index = pinecone.index(indexName);
 
-    // Create a dummy vector with 1024 dimensions (all zeros)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (all zeros)
+    const dummyVector = new Array(1536).fill(0);
 
     const queryResponse = await index.namespace("chemicals").query({
       vector: dummyVector,

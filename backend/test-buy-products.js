@@ -13,8 +13,8 @@ async function testBuyProducts() {
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
 
-    // Create a dummy vector with 1024 dimensions (all zeros)
-    const dummyVector = new Array(1024).fill(0);
+    // Create a dummy vector with 1536 dimensions (all zeros)
+    const dummyVector = new Array(1536).fill(0);
 
     // Test 1: Query without namespace to see if there's any data
     console.log("\n=== Test 1: Query without namespace ===");
