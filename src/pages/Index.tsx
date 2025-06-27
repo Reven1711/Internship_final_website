@@ -66,7 +66,6 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
     const toggleVisibility = () => {
       const scrollY = window.scrollY;
       const shouldBeVisible = scrollY > 600;
-      console.log(`Scroll position: ${scrollY}px, isVisible: ${shouldBeVisible}`);
       setIsVisible(shouldBeVisible);
     };
 
