@@ -1,7 +1,22 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import './Chatbot.css';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const SOURCEASY_CONTEXT = `
+You are Sourceasy's AI assistant. Here is everything you should know about Sourceasy:
+- Sourceasy is an AI-powered chemical sourcing platform based in India.
+- It connects buyers with verified chemical suppliers for industrial chemicals, raw materials, specialty chemicals, and laboratory reagents.
+- Key features: AI-driven supplier matching, quote comparison, procurement automation, and transparent pricing.
+- Sourceasy is free for buyers and suppliers during its early stage.
+- Buyers can inquire and get comparative quotes from multiple suppliers, and receive a detailed comparison report.
+- Suppliers can register by providing their GST number and product details, and are verified before being added to the network.
+- Sourceasy does not handle payments directly; all transactions are between buyers and suppliers.
+- For support, contact support@sourceasy.ai or visit https://www.sourceasy.ai
+- If a user asks a question not related to Sourceasy, its services, or chemical procurement, reply: "Sorry, I can only answer questions about Sourceasy and our services."
+`;
+
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,6 +29,8 @@ const Chatbot = () => {
     }
   ]);
   const [inputValue, setInputValue] = useState('');
+  const [useGemini, setUseGemini] = useState(false);
+  const isFirstBotResponse = useRef(true);
 
   const quickQuestions = [
     "How does Sourceasy work?",
@@ -58,31 +75,91 @@ const Chatbot = () => {
     return newMessage;
   };
 
-  const handleSendMessage = () => {
+  // Gemini API call using REST API and gemini-2.0-flash model
+  const askGemini = async (userText: string) => {
+    const prompt = `
+You are Sourceasy's AI assistant. Here is everything you should know about Sourceasy:
+- Sourceasy is an AI-powered chemical sourcing platform based in India.
+- It connects buyers with verified chemical suppliers for industrial chemicals, raw materials, specialty chemicals, and laboratory reagents.
+- Key features: AI-driven supplier matching, quote comparison, procurement automation, and transparent pricing.
+- Sourceasy is free for buyers and suppliers during its early stage.
+- Buyers can inquire and get comparative quotes from multiple suppliers, and receive a detailed comparison report.
+- Suppliers can register by providing their GST number and product details, and are verified before being added to the network.
+- Sourceasy does not handle payments directly; all transactions are between buyers and suppliers.
+- For support, contact support@sourceasy.ai or visit https://www.sourceasy.ai
+- If a user asks a question not related to Sourceasy, its services, or chemical procurement, reply: "Sorry, I can only answer questions about Sourceasy and our services."
+
+User: ${userText}
+AI:
+    `;
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt }
+                ]
+              }
+            ]
+          })
+        }
+      );
+      const data = await response.json();
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        return data.candidates[0].content.parts[0].text;
+      }
+      if (data.candidates && data.candidates[0]?.content?.text) {
+        return data.candidates[0].content.text;
+      }
+      if (data.error) {
+        return `Gemini error: ${data.error.message}`;
+      }
+      return "Sorry, I couldn't process that.";
+    } catch (e) {
+      return "Sorry, there was a problem connecting to our AI. Please try again later.";
+    }
+  };
+
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-
-    // Add user message
     addMessage(inputValue, false);
-
-    // Generate and add bot response
-    setTimeout(() => {
-      const response = generateBotResponse(inputValue);
-      addMessage(response, true);
-    }, 1000);
-
     setInputValue('');
+    if (!useGemini) {
+      // Hardcoded response first
+      setTimeout(() => {
+        const response = generateBotResponse(inputValue);
+        addMessage(response, true);
+        setUseGemini(true);
+      }, 1000);
+    } else {
+      // Use Gemini for subsequent answers
+      addMessage('...', true); // loading placeholder
+      const geminiResponse = await askGemini(inputValue);
+      setMessages(prev => prev.map(m => m.text === '...' && m.isBot ? { ...m, text: geminiResponse } : m));
+    }
   };
 
-  const handleQuickQuestion = (question: string) => {
-    // Add user message immediately
+  const handleQuickQuestion = async (question: string) => {
     addMessage(question, false);
-
-    // Generate and add bot response
-    setTimeout(() => {
-      const response = generateBotResponse(question);
-      addMessage(response, true);
-    }, 1000);
+    if (!useGemini) {
+      setTimeout(() => {
+        const response = generateBotResponse(question);
+        addMessage(response, true);
+        setUseGemini(true);
+      }, 1000);
+    } else {
+      addMessage('...', true);
+      const geminiResponse = await askGemini(question);
+      setMessages(prev => prev.map(m => m.text === '...' && m.isBot ? { ...m, text: geminiResponse } : m));
+    }
   };
+
+  console.log('Gemini API Key:', import.meta.env.VITE_GEMINI_API_KEY);
 
   if (!isOpen) {
     return (
