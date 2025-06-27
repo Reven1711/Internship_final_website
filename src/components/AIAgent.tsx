@@ -94,13 +94,6 @@ const AIAgent = () => {
                 </div>
               </div>
 
-              <button 
-                onClick={handleWhatsApp}
-                className="ai-agent-cta-button"
-              >
-                Get Started
-                <ArrowRight className="cta-icon" />
-              </button>
             </div>
 
             <div className="ai-agent-visual">
