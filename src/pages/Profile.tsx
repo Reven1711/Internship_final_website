@@ -1,28 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Phone, Pin, Building2, Edit, ChevronDown, ChevronUp, Plus, X, FileText, Download, Share2 } from 'lucide-react';
+import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Phone, Pin, Building2, Edit, ChevronDown, ChevronUp, Plus, X, FileText, Download, Share2, IndianRupee } from 'lucide-react';
 import './Profile.css';
 import Popup from '../components/ui/Popup';
 import { useNavigate } from 'react-router-dom';
-
-// Rupee symbol component
-const RupeeIcon = ({ size = 16, className = "" }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M6 3h12" />
-    <path d="M6 8h12" />
-    <path d="M6 13l8.5 8" />
-    <path d="M15 13c-2.5 0-5-1.5-5-4" />
-  </svg>
-);
 
 const mockProfile = {
   profilePic: 'https://www.gstatic.com/images/branding/product/2x/avatar_square_blue_512dp.png',
@@ -1219,7 +1199,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       height: '40px',
                     }}
                   >
-                    <RupeeIcon size={16} />
+                    <IndianRupee size={16} />
                     Quotation Sent
                   </button>
                 </div>
