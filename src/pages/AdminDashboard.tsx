@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, XCircle, Clock, CheckCircle, X as XIcon, RefreshCw } from 'lucide-react';
+import { X, Check, XCircle, Clock, CheckCircle, X as XIcon, RefreshCw, BarChart3, Package, Users } from 'lucide-react';
 import './AdminDashboard.css';
 import { saveAs } from 'file-saver';
 import { Line } from 'react-chartjs-2';
@@ -66,6 +66,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     new_sellers: true,
     quotations: true
   });
+  const [activeTab, setActiveTab] = useState<'metrics' | 'requests' | 'referrals'>('metrics');
 
   useEffect(() => {
     if (user?.email) {
@@ -358,117 +359,87 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   return (
     <div className="admin-dashboard" style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' }}>
-      {/* Daily Metrics Section */}
-      <div className="metrics-section" style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, marginBottom: 32, border: '1px solid #e2e8f0' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, color: '#1e293b', letterSpacing: 0.5 }}>Daily Metrics</h2>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-          <span style={{ fontWeight: 500 }}>Date Range:</span>
-          <input type="date" value={metricsStartDate} onChange={e => setMetricsStartDate(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #e5e7eb', minWidth: 120 }} placeholder="YYYY-MM-DD" />
-          <span>to</span>
-          <input type="date" value={metricsEndDate} onChange={e => setMetricsEndDate(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #e5e7eb', minWidth: 120 }} placeholder="YYYY-MM-DD" />
-          <button onClick={() => { setMetricsStartDate(''); setMetricsEndDate(''); }} style={{ marginLeft: 8, padding: '6px 14px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#1e293b', fontWeight: 500, fontSize: 14, cursor: 'pointer' }}>Reset</button>
-        </div>
-        {metricsLoading ? (
-          <div style={{ color: '#64748b' }}>Loading metrics...</div>
-        ) : metricsError ? (
-          <div style={{ color: '#dc2626' }}>{metricsError}</div>
-        ) : (
-          <>
-            <div style={{ display: 'flex', gap: 32, marginBottom: 24 }}>
-              <MetricCard label="Inquiries" value={metrics.reduce((a, m) => a + (m.inquiries || 0), 0)} color="#2563eb" />
-              <MetricCard label="New Buyers" value={metrics.reduce((a, m) => a + (m.new_buyers || 0), 0)} color="#059669" />
-              <MetricCard label="New Sellers" value={metrics.reduce((a, m) => a + (m.new_sellers || 0), 0)} color="#f59e42" />
-              <MetricCard label="Quotations" value={metrics.reduce((a, m) => a + (m.quotations || 0), 0)} color="#dc2626" />
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-              <button
-                onClick={() => toggleMetric('inquiries')}
-                style={{
-                  padding: '8px 22px',
-                  borderRadius: 999,
-                  border: visibleMetrics.inquiries ? 'none' : '1.5px solid #d1d5db',
-                  background: visibleMetrics.inquiries ? '#2563eb' : '#f8fafc',
-                  color: visibleMetrics.inquiries ? '#fff' : '#1e293b',
-                  fontWeight: 600,
-                  fontSize: 15,
-                  boxShadow: visibleMetrics.inquiries ? '0 2px 8px rgba(37,99,235,0.10)' : 'none',
-                  transition: 'all 0.2s',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  minWidth: 110,
-                }}
-              >
-                Inquiries
-              </button>
-              <button
-                onClick={() => toggleMetric('new_buyers')}
-                style={{
-                  padding: '8px 22px',
-                  borderRadius: 999,
-                  border: visibleMetrics.new_buyers ? 'none' : '1.5px solid #d1d5db',
-                  background: visibleMetrics.new_buyers ? '#059669' : '#f8fafc',
-                  color: visibleMetrics.new_buyers ? '#fff' : '#1e293b',
-                  fontWeight: 600,
-                  fontSize: 15,
-                  boxShadow: visibleMetrics.new_buyers ? '0 2px 8px rgba(5,150,105,0.10)' : 'none',
-                  transition: 'all 0.2s',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  minWidth: 110,
-                }}
-              >
-                New Buyers
-              </button>
-              <button
-                onClick={() => toggleMetric('new_sellers')}
-                style={{
-                  padding: '8px 22px',
-                  borderRadius: 999,
-                  border: visibleMetrics.new_sellers ? 'none' : '1.5px solid #d1d5db',
-                  background: visibleMetrics.new_sellers ? '#f59e42' : '#f8fafc',
-                  color: visibleMetrics.new_sellers ? '#fff' : '#1e293b',
-                  fontWeight: 600,
-                  fontSize: 15,
-                  boxShadow: visibleMetrics.new_sellers ? '0 2px 8px rgba(245,158,66,0.10)' : 'none',
-                  transition: 'all 0.2s',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  minWidth: 110,
-                }}
-              >
-                New Sellers
-              </button>
-              <button
-                onClick={() => toggleMetric('quotations')}
-                style={{
-                  padding: '8px 22px',
-                  borderRadius: 999,
-                  border: visibleMetrics.quotations ? 'none' : '1.5px solid #d1d5db',
-                  background: visibleMetrics.quotations ? '#dc2626' : '#f8fafc',
-                  color: visibleMetrics.quotations ? '#fff' : '#1e293b',
-                  fontWeight: 600,
-                  fontSize: 15,
-                  boxShadow: visibleMetrics.quotations ? '0 2px 8px rgba(220,38,38,0.10)' : 'none',
-                  transition: 'all 0.2s',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  minWidth: 110,
-                }}
-              >
-                Quotations
-              </button>
-            </div>
-            <div style={{ minHeight: 320 }}>
-              <Line data={chartData} options={chartOptions} />
-            </div>
-          </>
-        )}
+      {/* Tab Navigation */}
+      <div style={{ 
+        display: 'flex', 
+        background: '#fff', 
+        borderRadius: 12, 
+        boxShadow: '0 1px 3px rgba(0,0,0,0.10)', 
+        border: '1px solid #e2e8f0',
+        overflow: 'hidden'
+      }}>
+        <button
+          onClick={() => setActiveTab('metrics')}
+          style={{
+            flex: 1,
+            padding: '16px 24px',
+            border: 'none',
+            background: activeTab === 'metrics' ? '#2563eb' : 'transparent',
+            color: activeTab === 'metrics' ? '#fff' : '#64748b',
+            fontWeight: 600,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'all 0.2s',
+            borderRight: '1px solid #e2e8f0'
+          }}
+        >
+          <BarChart3 size={20} />
+          Daily Metrics
+        </button>
+        <button
+          onClick={() => setActiveTab('requests')}
+          style={{
+            flex: 1,
+            padding: '16px 24px',
+            border: 'none',
+            background: activeTab === 'requests' ? '#2563eb' : 'transparent',
+            color: activeTab === 'requests' ? '#fff' : '#64748b',
+            fontWeight: 600,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'all 0.2s',
+            borderRight: '1px solid #e2e8f0'
+          }}
+        >
+          <Package size={20} />
+          Product Requests
+        </button>
+        <button
+          onClick={() => setActiveTab('referrals')}
+          style={{
+            flex: 1,
+            padding: '16px 24px',
+            border: 'none',
+            background: activeTab === 'referrals' ? '#2563eb' : 'transparent',
+            color: activeTab === 'referrals' ? '#fff' : '#64748b',
+            fontWeight: 600,
+            fontSize: 15,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'all 0.2s'
+          }}
+        >
+          <Users size={20} />
+          User Referrals
+        </button>
       </div>
+
       {/* Top bar with refresh button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
         <button
           onClick={handleRefresh}
-          title="Refresh Referrals & Requests"
+          title="Refresh Data"
           style={{
             background: '#f3f4f6',
             border: '1px solid #e5e7eb',
@@ -485,9 +456,178 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           <span style={{ fontWeight: 500, fontSize: 15, color: '#1e293b' }}>Refresh</span>
         </button>
       </div>
-      <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        {/* Referrals Section - Modern Card UI in Dashboard Theme */}
-        <div className="referrals-section" style={{ flex: '1 1 350px', maxWidth: 400, minWidth: 320, background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, marginBottom: 32, border: '1px solid #e2e8f0' }}>
+
+      {/* Tab Content */}
+      {activeTab === 'metrics' && (
+        <div className="metrics-section" style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, marginBottom: 32, border: '1px solid #e2e8f0' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, color: '#1e293b', letterSpacing: 0.5 }}>Daily Metrics</h2>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontWeight: 500 }}>Date Range:</span>
+            <input type="date" value={metricsStartDate} onChange={e => setMetricsStartDate(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #e5e7eb', minWidth: 120 }} placeholder="YYYY-MM-DD" />
+            <span>to</span>
+            <input type="date" value={metricsEndDate} onChange={e => setMetricsEndDate(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #e5e7eb', minWidth: 120 }} placeholder="YYYY-MM-DD" />
+            <button onClick={() => { setMetricsStartDate(''); setMetricsEndDate(''); }} style={{ marginLeft: 8, padding: '6px 14px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#1e293b', fontWeight: 500, fontSize: 14, cursor: 'pointer' }}>Reset</button>
+          </div>
+          {metricsLoading ? (
+            <div style={{ color: '#64748b' }}>Loading metrics...</div>
+          ) : metricsError ? (
+            <div style={{ color: '#dc2626' }}>{metricsError}</div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 32, marginBottom: 24 }}>
+                <MetricCard label="Inquiries" value={metrics.reduce((a, m) => a + (m.inquiries || 0), 0)} color="#2563eb" />
+                <MetricCard label="New Buyers" value={metrics.reduce((a, m) => a + (m.new_buyers || 0), 0)} color="#059669" />
+                <MetricCard label="New Sellers" value={metrics.reduce((a, m) => a + (m.new_sellers || 0), 0)} color="#f59e42" />
+                <MetricCard label="Quotations" value={metrics.reduce((a, m) => a + (m.quotations || 0), 0)} color="#dc2626" />
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <button
+                  onClick={() => toggleMetric('inquiries')}
+                  style={{
+                    padding: '8px 22px',
+                    borderRadius: 999,
+                    border: visibleMetrics.inquiries ? 'none' : '1.5px solid #d1d5db',
+                    background: visibleMetrics.inquiries ? '#2563eb' : '#f8fafc',
+                    color: visibleMetrics.inquiries ? '#fff' : '#1e293b',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    boxShadow: visibleMetrics.inquiries ? '0 2px 8px rgba(37,99,235,0.10)' : 'none',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    minWidth: 110,
+                  }}
+                >
+                  Inquiries
+                </button>
+                <button
+                  onClick={() => toggleMetric('new_buyers')}
+                  style={{
+                    padding: '8px 22px',
+                    borderRadius: 999,
+                    border: visibleMetrics.new_buyers ? 'none' : '1.5px solid #d1d5db',
+                    background: visibleMetrics.new_buyers ? '#059669' : '#f8fafc',
+                    color: visibleMetrics.new_buyers ? '#fff' : '#1e293b',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    boxShadow: visibleMetrics.new_buyers ? '0 2px 8px rgba(5,150,105,0.10)' : 'none',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    minWidth: 110,
+                  }}
+                >
+                  New Buyers
+                </button>
+                <button
+                  onClick={() => toggleMetric('new_sellers')}
+                  style={{
+                    padding: '8px 22px',
+                    borderRadius: 999,
+                    border: visibleMetrics.new_sellers ? 'none' : '1.5px solid #d1d5db',
+                    background: visibleMetrics.new_sellers ? '#f59e42' : '#f8fafc',
+                    color: visibleMetrics.new_sellers ? '#fff' : '#1e293b',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    boxShadow: visibleMetrics.new_sellers ? '0 2px 8px rgba(245,158,66,0.10)' : 'none',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    minWidth: 110,
+                  }}
+                >
+                  New Sellers
+                </button>
+                <button
+                  onClick={() => toggleMetric('quotations')}
+                  style={{
+                    padding: '8px 22px',
+                    borderRadius: 999,
+                    border: visibleMetrics.quotations ? 'none' : '1.5px solid #d1d5db',
+                    background: visibleMetrics.quotations ? '#dc2626' : '#f8fafc',
+                    color: visibleMetrics.quotations ? '#fff' : '#1e293b',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    boxShadow: visibleMetrics.quotations ? '0 2px 8px rgba(220,38,38,0.10)' : 'none',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    minWidth: 110,
+                  }}
+                >
+                  Quotations
+                </button>
+              </div>
+              <div style={{ minHeight: 320 }}>
+                <Line data={chartData} options={chartOptions} />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'requests' && (
+        <div className="requests-container" style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, border: '1px solid #e2e8f0' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, color: '#1e293b', letterSpacing: 0.5 }}>Product Requests</h2>
+          {loading ? (
+            <div className="loading">Loading pending requests...</div>
+          ) : error ? (
+            <div className="error-message">{error}</div>
+          ) : pendingRequests.length === 0 ? (
+            <div className="no-requests">
+              <CheckCircle size={48} />
+              <h3>No Pending Requests</h3>
+              <p>All product requests have been reviewed or there are none to show.</p>
+            </div>
+          ) : (
+            <div className="requests-grid">
+              {pendingRequests.map((request) => (
+                <div key={request.id} className="request-card">
+                  <div className="request-header">
+                    <h3>{request.name}</h3>
+                    <span className="request-id">#{request.id.slice(-8)}</span>
+                  </div>
+                  
+                  <div className="request-details">
+                    <div className="detail-item">
+                      <label>Requested by:</label>
+                      <span>{request.email}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Status:</label>
+                      <span>{request.status}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Submitted:</label>
+                      <span>{formatDate(request.submittedAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="request-actions">
+                    <button
+                      className="action-btn approve-btn"
+                      onClick={() => handleOpenReviewModal(request)}
+                    >
+                      <Check size={16} />
+                      Approve
+                    </button>
+                    <button
+                      className="action-btn reject-btn"
+                      onClick={() => setSelectedRequest(request)}
+                    >
+                      <XCircle size={16} />
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'referrals' && (
+        <div className="referrals-section" style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, border: '1px solid #e2e8f0' }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, color: '#1e293b', letterSpacing: 0.5 }}>User Referrals</h2>
           <button onClick={downloadReferralsCSV} style={{ marginBottom: 12, padding: '7px 18px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer', boxShadow: '0 1px 4px rgba(16,185,129,0.13)' }}>Download as CSV</button>
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
@@ -564,65 +704,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             </>
           )}
         </div>
-
-        {/* Product Requests Section */}
-        <div className="requests-container" style={{ flex: '2 1 600px', minWidth: 340 }}>
-          {loading ? (
-            <div className="loading">Loading pending requests...</div>
-          ) : error ? (
-            <div className="error-message">{error}</div>
-          ) : pendingRequests.length === 0 ? (
-            <div className="no-requests">
-              <CheckCircle size={48} />
-              <h3>No Pending Requests</h3>
-              <p>All product requests have been reviewed or there are none to show.</p>
-            </div>
-          ) : (
-            <div className="requests-grid">
-              {pendingRequests.map((request) => (
-                <div key={request.id} className="request-card">
-                  <div className="request-header">
-                    <h3>{request.name}</h3>
-                    <span className="request-id">#{request.id.slice(-8)}</span>
-                  </div>
-                  
-                  <div className="request-details">
-                    <div className="detail-item">
-                      <label>Requested by:</label>
-                      <span>{request.email}</span>
-                    </div>
-                    <div className="detail-item">
-                      <label>Status:</label>
-                      <span>{request.status}</span>
-                    </div>
-                    <div className="detail-item">
-                      <label>Submitted:</label>
-                      <span>{formatDate(request.submittedAt)}</span>
-                    </div>
-                  </div>
-
-                  <div className="request-actions">
-                    <button
-                      className="action-btn approve-btn"
-                      onClick={() => handleOpenReviewModal(request)}
-                    >
-                      <Check size={16} />
-                      Approve
-                    </button>
-                    <button
-                      className="action-btn reject-btn"
-                      onClick={() => setSelectedRequest(request)}
-                    >
-                      <XCircle size={16} />
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Review Modal */}
       {selectedRequest && (
