@@ -823,4 +823,18 @@
     margin-top: 8px !important;
     margin-left: 0 !important;
   }
+  .inquiry-grid,
+  .quotation-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .inquiry-card,
+  .quotation-card {
+    padding: 12px !important;
+    font-size: 14px !important;
+  }
+  .inquiry-card h3,
+  .quotation-card h3 {
+    font-size: 16px !important;
+  }
 }

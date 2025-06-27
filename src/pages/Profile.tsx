@@ -1148,100 +1148,99 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           
           {tab === 'history' && (
             <div className="history-content">
-              {/* Tabs Row: Inquiry Raised / Quotation Sent and Search Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '48px', gap: '16px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {/* History Tabs and Search Bar in one row */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-start',
+                alignItems: 'center',
+                marginBottom: '0',
+                gap: '24px',
+              }}>
+                <div className="history-tabs" style={{
+                  display: 'flex',
+                  gap: '0',
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '4px',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                  maxWidth: 'fit-content',
+                  height: '48px',
+                  alignItems: 'center',
+                }}>
                   <button
+                    className={`history-tab-btn ${historyTab === 'inquiry' ? 'active' : ''}`}
                     onClick={() => setHistoryTab('inquiry')}
                     style={{
-                      background: historyTab === 'inquiry' ? '#2563eb' : 'white',
-                      color: historyTab === 'inquiry' ? 'white' : '#2563eb',
-                      border: '1.5px solid #2563eb',
-                      borderRadius: '10px 10px 0 0',
-                      fontWeight: 600,
-                      fontSize: '1rem',
-                      padding: '10px 28px',
-                      boxShadow: historyTab === 'inquiry' ? '0 4px 12px rgba(37,99,235,0.08)' : '0 2px 8px rgba(37,99,235,0.04)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px 24px',
+                      border: 'none',
+                      background: historyTab === 'inquiry' ? '#eff6ff' : 'none',
+                      color: historyTab === 'inquiry' ? '#2563eb' : '#6b7280',
+                      fontSize: '14px',
+                      fontWeight: '500',
                       cursor: 'pointer',
-                      outline: 'none',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s ease',
                       borderBottom: historyTab === 'inquiry' ? '2px solid #2563eb' : 'none',
                       height: '40px',
                     }}
                   >
+                    <FileText size={16} />
                     Inquiry Raised
                   </button>
                   <button
+                    className={`history-tab-btn ${historyTab === 'quotation' ? 'active' : ''}`}
                     onClick={() => setHistoryTab('quotation')}
                     style={{
-                      background: historyTab === 'quotation' ? '#2563eb' : 'white',
-                      color: historyTab === 'quotation' ? 'white' : '#2563eb',
-                      border: '1.5px solid #2563eb',
-                      borderRadius: '10px 10px 0 0',
-                      fontWeight: 600,
-                      fontSize: '1rem',
-                      padding: '10px 28px',
-                      boxShadow: historyTab === 'quotation' ? '0 4px 12px rgba(37,99,235,0.08)' : '0 2px 8px rgba(37,99,235,0.04)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px 24px',
+                      border: 'none',
+                      background: historyTab === 'quotation' ? '#eff6ff' : 'none',
+                      color: historyTab === 'quotation' ? '#2563eb' : '#6b7280',
+                      fontSize: '14px',
+                      fontWeight: '500',
                       cursor: 'pointer',
-                      outline: 'none',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s ease',
                       borderBottom: historyTab === 'quotation' ? '2px solid #2563eb' : 'none',
                       height: '40px',
                     }}
                   >
+                    <RupeeIcon size={16} />
                     Quotation Sent
                   </button>
                 </div>
-                {/* Search Bar Only */}
-                {historyTab === 'inquiry' && (
-                  <input
-                    type="text"
-                    placeholder="Search inquiries..."
-                    value={inquirySearch}
-                    onChange={(e) => setInquirySearch(e.target.value)}
-                    style={{
-                      padding: '12px 16px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      width: '180px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s ease',
-                      height: '40px',
-                      boxSizing: 'border-box',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                  />
-                )}
-                {historyTab === 'quotation' && (
-                  <input
-                    type="text"
-                    placeholder="Search quotations..."
-                    value={quotationSearch}
-                    onChange={(e) => setQuotationSearch(e.target.value)}
-                    style={{
-                      padding: '12px 16px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      width: '180px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s ease',
-                      height: '40px',
-                      boxSizing: 'border-box',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                  />
-                )}
               </div>
-              {/* Date Pickers Row: Always below */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '12px 0 24px 0', flexWrap: 'wrap' }}>
+              {/* Search Bar and Date Pickers in their own new line */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '18px 0 24px 0', flexWrap: 'wrap' }}>
                 {historyTab === 'inquiry' && (
                   <>
+                    <input
+                      type="text"
+                      placeholder="Search inquiries..."
+                      value={inquirySearch}
+                      onChange={(e) => setInquirySearch(e.target.value)}
+                      style={{
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        width: '180px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s ease',
+                        height: '40px',
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                    />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
                       <input
@@ -1288,6 +1287,27 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 )}
                 {historyTab === 'quotation' && (
                   <>
+                    <input
+                      type="text"
+                      placeholder="Search quotations..."
+                      value={quotationSearch}
+                      onChange={(e) => setQuotationSearch(e.target.value)}
+                      style={{
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        width: '180px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s ease',
+                        height: '40px',
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                    />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
                       <input
