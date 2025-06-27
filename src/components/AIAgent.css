@@ -570,6 +570,10 @@
     width: 1.25rem;
     height: 1.25rem;
   }
+
+  .connection-node-1 {
+    top: 52px;
+  }
 }
 
 .typewriter-text {
