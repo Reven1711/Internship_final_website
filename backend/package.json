@@ -13,10 +13,12 @@
   "type": "commonjs",
   "dependencies": {
     "@pinecone-database/pinecone": "^2.1.0",
+    "chart.js": "^4.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "nodemailer": "^7.0.3",
-    "openai": "^5.7.0"
+    "openai": "^5.7.0",
+    "react-chartjs-2": "^5.3.0"
   }
 }

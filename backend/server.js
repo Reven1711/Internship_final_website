@@ -1746,6 +1746,40 @@ app.put("/api/update-pincode", async (req, res) => {
   }
 });
 
+// Add this after other API endpoints
+app.get("/api/daily-metrics", async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const index = pinecone.index(
+      process.env.PINECONE_INDEX_NAME || "chemicals-new"
+    );
+    const dummyVector = new Array(1536).fill(0);
+    // Query all daily metrics (topK large enough for all days)
+    const queryResponse = await index.namespace("daily_metrics").query({
+      vector: dummyVector,
+      topK: 366, // 1 year max
+      includeMetadata: true,
+    });
+    let records = (queryResponse.matches || []).map((rec) => ({
+      date: rec.id, // YYYY-MM-DD
+      ...rec.metadata,
+    }));
+    // Filter by date if provided
+    if (startDate) {
+      records = records.filter((r) => r.date >= startDate);
+    }
+    if (endDate) {
+      records = records.filter((r) => r.date <= endDate);
+    }
+    // Sort by date ascending
+    records.sort((a, b) => a.date.localeCompare(b.date));
+    res.json({ success: true, metrics: records });
+  } catch (error) {
+    console.error("Error fetching daily metrics:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

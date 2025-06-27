@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, XCircle, Clock, CheckCircle, X as XIcon, RefreshCw } from 'lucide-react';
 import './AdminDashboard.css';
 import { saveAs } from 'file-saver';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface ProductRequest {
   id: string;
@@ -43,6 +55,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [filter, setFilter] = useState<'all' | 'fiveplus' | 'rewarded'>('all');
   const [referralDisplayCount, setReferralDisplayCount] = useState(5);
   const [editProductName, setEditProductName] = useState<string>('');
+  const [metrics, setMetrics] = useState<any[]>([]);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState('');
+  const [metricsStartDate, setMetricsStartDate] = useState('');
+  const [metricsEndDate, setMetricsEndDate] = useState('');
+  const [visibleMetrics, setVisibleMetrics] = useState({
+    inquiries: true,
+    new_buyers: true,
+    new_sellers: true,
+    quotations: true
+  });
 
   useEffect(() => {
     if (user?.email) {
@@ -51,6 +74,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       fetchReferrals();
     }
   }, [user?.email]);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, [metricsStartDate, metricsEndDate]);
 
   const fetchPendingRequests = async () => {
     try {
@@ -92,6 +119,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       setReferralError('Failed to fetch referrals');
     } finally {
       setReferralLoading(false);
+    }
+  };
+
+  const fetchMetrics = async () => {
+    setMetricsLoading(true);
+    setMetricsError('');
+    try {
+      let url = '/api/daily-metrics';
+      const params = [];
+      if (metricsStartDate) params.push(`startDate=${metricsStartDate}`);
+      if (metricsEndDate) params.push(`endDate=${metricsEndDate}`);
+      if (params.length) url += '?' + params.join('&');
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) {
+        setMetrics(data.metrics || []);
+      } else {
+        setMetricsError(data.error || 'Failed to fetch metrics');
+      }
+    } catch (e) {
+      setMetricsError('Failed to fetch metrics');
+    } finally {
+      setMetricsLoading(false);
     }
   };
 
@@ -248,8 +298,172 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     URL.revokeObjectURL(url);
   };
 
+  const toggleMetric = (metric: keyof typeof visibleMetrics) => {
+    setVisibleMetrics(prev => ({ ...prev, [metric]: !prev[metric] }));
+  };
+
+  // Prepare chart data
+  const chartData = {
+    labels: metrics.map(m => m.date),
+    datasets: [
+      {
+        label: 'Inquiries',
+        data: metrics.map(m => m.inquiries),
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37,99,235,0.1)',
+        tension: 0.3,
+        hidden: !visibleMetrics.inquiries,
+        borderWidth: visibleMetrics.inquiries ? 3 : 0,
+      },
+      {
+        label: 'New Buyers',
+        data: metrics.map(m => m.new_buyers),
+        borderColor: '#059669',
+        backgroundColor: 'rgba(5,150,105,0.1)',
+        tension: 0.3,
+        hidden: !visibleMetrics.new_buyers,
+        borderWidth: visibleMetrics.new_buyers ? 3 : 0,
+      },
+      {
+        label: 'New Sellers',
+        data: metrics.map(m => m.new_sellers),
+        borderColor: '#f59e42',
+        backgroundColor: 'rgba(245,158,66,0.1)',
+        tension: 0.3,
+        hidden: !visibleMetrics.new_sellers,
+        borderWidth: visibleMetrics.new_sellers ? 3 : 0,
+      },
+      {
+        label: 'Quotations',
+        data: metrics.map(m => m.quotations),
+        borderColor: '#dc2626',
+        backgroundColor: 'rgba(220,38,38,0.1)',
+        tension: 0.3,
+        hidden: !visibleMetrics.quotations,
+        borderWidth: visibleMetrics.quotations ? 3 : 0,
+      },
+    ],
+  };
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top' as const },
+      title: { display: true, text: 'Daily Metrics' },
+    },
+    scales: {
+      x: { title: { display: true, text: 'Date' } },
+      y: { title: { display: true, text: 'Count' }, beginAtZero: true },
+    },
+  };
+
   return (
     <div className="admin-dashboard" style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' }}>
+      {/* Daily Metrics Section */}
+      <div className="metrics-section" style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, marginBottom: 32, border: '1px solid #e2e8f0' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, color: '#1e293b', letterSpacing: 0.5 }}>Daily Metrics</h2>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+          <span style={{ fontWeight: 500 }}>Date Range:</span>
+          <input type="date" value={metricsStartDate} onChange={e => setMetricsStartDate(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #e5e7eb', minWidth: 120 }} placeholder="YYYY-MM-DD" />
+          <span>to</span>
+          <input type="date" value={metricsEndDate} onChange={e => setMetricsEndDate(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #e5e7eb', minWidth: 120 }} placeholder="YYYY-MM-DD" />
+          <button onClick={() => { setMetricsStartDate(''); setMetricsEndDate(''); }} style={{ marginLeft: 8, padding: '6px 14px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#1e293b', fontWeight: 500, fontSize: 14, cursor: 'pointer' }}>Reset</button>
+        </div>
+        {metricsLoading ? (
+          <div style={{ color: '#64748b' }}>Loading metrics...</div>
+        ) : metricsError ? (
+          <div style={{ color: '#dc2626' }}>{metricsError}</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 32, marginBottom: 24 }}>
+              <MetricCard label="Inquiries" value={metrics.reduce((a, m) => a + (m.inquiries || 0), 0)} color="#2563eb" />
+              <MetricCard label="New Buyers" value={metrics.reduce((a, m) => a + (m.new_buyers || 0), 0)} color="#059669" />
+              <MetricCard label="New Sellers" value={metrics.reduce((a, m) => a + (m.new_sellers || 0), 0)} color="#f59e42" />
+              <MetricCard label="Quotations" value={metrics.reduce((a, m) => a + (m.quotations || 0), 0)} color="#dc2626" />
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              <button
+                onClick={() => toggleMetric('inquiries')}
+                style={{
+                  padding: '8px 22px',
+                  borderRadius: 999,
+                  border: visibleMetrics.inquiries ? 'none' : '1.5px solid #d1d5db',
+                  background: visibleMetrics.inquiries ? '#2563eb' : '#f8fafc',
+                  color: visibleMetrics.inquiries ? '#fff' : '#1e293b',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  boxShadow: visibleMetrics.inquiries ? '0 2px 8px rgba(37,99,235,0.10)' : 'none',
+                  transition: 'all 0.2s',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  minWidth: 110,
+                }}
+              >
+                Inquiries
+              </button>
+              <button
+                onClick={() => toggleMetric('new_buyers')}
+                style={{
+                  padding: '8px 22px',
+                  borderRadius: 999,
+                  border: visibleMetrics.new_buyers ? 'none' : '1.5px solid #d1d5db',
+                  background: visibleMetrics.new_buyers ? '#059669' : '#f8fafc',
+                  color: visibleMetrics.new_buyers ? '#fff' : '#1e293b',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  boxShadow: visibleMetrics.new_buyers ? '0 2px 8px rgba(5,150,105,0.10)' : 'none',
+                  transition: 'all 0.2s',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  minWidth: 110,
+                }}
+              >
+                New Buyers
+              </button>
+              <button
+                onClick={() => toggleMetric('new_sellers')}
+                style={{
+                  padding: '8px 22px',
+                  borderRadius: 999,
+                  border: visibleMetrics.new_sellers ? 'none' : '1.5px solid #d1d5db',
+                  background: visibleMetrics.new_sellers ? '#f59e42' : '#f8fafc',
+                  color: visibleMetrics.new_sellers ? '#fff' : '#1e293b',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  boxShadow: visibleMetrics.new_sellers ? '0 2px 8px rgba(245,158,66,0.10)' : 'none',
+                  transition: 'all 0.2s',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  minWidth: 110,
+                }}
+              >
+                New Sellers
+              </button>
+              <button
+                onClick={() => toggleMetric('quotations')}
+                style={{
+                  padding: '8px 22px',
+                  borderRadius: 999,
+                  border: visibleMetrics.quotations ? 'none' : '1.5px solid #d1d5db',
+                  background: visibleMetrics.quotations ? '#dc2626' : '#f8fafc',
+                  color: visibleMetrics.quotations ? '#fff' : '#1e293b',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  boxShadow: visibleMetrics.quotations ? '0 2px 8px rgba(220,38,38,0.10)' : 'none',
+                  transition: 'all 0.2s',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  minWidth: 110,
+                }}
+              >
+                Quotations
+              </button>
+            </div>
+            <div style={{ minHeight: 320 }}>
+              <Line data={chartData} options={chartOptions} />
+            </div>
+          </>
+        )}
+      </div>
       {/* Top bar with refresh button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
         <button
@@ -508,5 +722,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     </div>
   );
 };
+
+// MetricCard component
+const MetricCard = ({ label, value, color }: { label: string, value: number, color: string }) => (
+  <div style={{ flex: 1, background: '#f8fafc', borderRadius: 10, padding: 18, textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.04)', border: `2px solid ${color}` }}>
+    <div style={{ fontSize: 15, color: color, fontWeight: 700, marginBottom: 6 }}>{label}</div>
+    <div style={{ fontSize: 28, fontWeight: 800, color: '#1e293b' }}>{value}</div>
+  </div>
+);
 
 export default AdminDashboard; 
