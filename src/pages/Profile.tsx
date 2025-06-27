@@ -764,6 +764,14 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     setIsEditPopupOpen(false);
   };
 
+  // WhatsApp handler for phone number change
+  const handleWhatsAppPhoneChange = () => {
+    const message = "Hi, I want to change my phone number";
+    const whatsappUrl = `https://wa.me/+916352615629?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    setIsEditPopupOpen(false);
+  };
+
   // Pincode edit handlers
   const handleEditPincode = () => {
     setNewPincode(profileData?.["PIN Code"] || mockProfile.pin);
@@ -2443,6 +2451,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         title="Contact our Agent"
         message="For assistance in updating your PIN code or phone number, please reach out to our AI Agent on WhatsApp."
         buttonText="Change via WhatsApp"
+        onButtonClick={handleWhatsAppPhoneChange}
       />
 
       {/* Pincode Edit Modal */}

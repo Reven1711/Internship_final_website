@@ -10,6 +10,7 @@ interface PopupProps {
   message?: string;
   showCloseButton?: boolean;
   buttonText?: string;
+  onButtonClick?: () => void;
 }
 
 const Popup: React.FC<PopupProps> = ({
@@ -18,7 +19,8 @@ const Popup: React.FC<PopupProps> = ({
   title = "Coming Soon",
   message = "This feature is currently under development. Stay tuned for updates!",
   showCloseButton = true,
-  buttonText = "Got it"
+  buttonText = "Got it",
+  onButtonClick
 }) => {
   useEffect(() => {
     // Prevent scroll and overflow clipping on all relevant parents
@@ -73,7 +75,7 @@ const Popup: React.FC<PopupProps> = ({
           <p className="popup-message">{message}</p>
         </div>
         <div className="popup-footer">
-          <button className="popup-ok-button" onClick={onClose}>
+          <button className="popup-ok-button" onClick={onButtonClick || onClose}>
             {buttonText}
           </button>
         </div>
