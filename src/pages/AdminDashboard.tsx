@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, XCircle, Clock, CheckCircle, X as XIcon, RefreshCw } from 'lucide-react';
 import './AdminDashboard.css';
+import { saveAs } from 'file-saver';
 
 interface ProductRequest {
   id: string;
@@ -220,6 +221,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     fetchReferrals();
   };
 
+  // CSV download logic
+  const downloadReferralsCSV = () => {
+    // Define CSV headers (remove Email)
+    const headers = ['Phone', 'Referral Count', 'Rewarded'];
+    // Map filteredReferrals to rows (remove email)
+    const rows = filteredReferrals.map(ref => {
+      const phone = ref.metadata.phone || ref.id.replace('whatsapp:+', '');
+      const count = ref.metadata.referralCount || 0;
+      const rewarded = rewardGiven[phone] ? 'Yes' : 'No';
+      return [phone, count, rewarded];
+    });
+    // Build CSV string
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+    // Create a blob and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'user_referrals.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="admin-dashboard" style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' }}>
       {/* Top bar with refresh button */}
@@ -247,6 +275,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         {/* Referrals Section - Modern Card UI in Dashboard Theme */}
         <div className="referrals-section" style={{ flex: '1 1 350px', maxWidth: 400, minWidth: 320, background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.10)', padding: 18, marginBottom: 32, border: '1px solid #e2e8f0' }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, color: '#1e293b', letterSpacing: 0.5 }}>User Referrals</h2>
+          <button onClick={downloadReferralsCSV} style={{ marginBottom: 12, padding: '7px 18px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer', boxShadow: '0 1px 4px rgba(16,185,129,0.13)' }}>Download as CSV</button>
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
             <button onClick={() => { setFilter('all'); setReferralDisplayCount(5); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: filter === 'all' ? '#1d4ed8' : '#f3f4f6', color: filter === 'all' ? '#fff' : '#1e293b', fontWeight: 500, fontSize: 14, transition: 'background 0.2s' }}>All</button>
             <button onClick={() => { setFilter('fiveplus'); setReferralDisplayCount(5); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: filter === 'fiveplus' ? '#1d4ed8' : '#f3f4f6', color: filter === 'fiveplus' ? '#fff' : '#1e293b', fontWeight: 500, fontSize: 14, transition: 'background 0.2s' }}>5+ Referrals</button>
