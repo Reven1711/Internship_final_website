@@ -16,7 +16,7 @@ const HowItWorks = () => {
   const steps = [
     {
       title: "Send Your Requirement",
-      description: "Simply send your requirement on +91 98260 00000",
+      description: "Simply send your requirement on +916352615629",
       message: "Hi, I need 1000L of Acetic Acid for delivery in Mumbai",
       interval: 2000,
     },

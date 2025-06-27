@@ -13,7 +13,7 @@ const handleWhatsApp = () => {
 const RegistrationMessage: React.FC<RegistrationMessageProps> = ({ isOpen, onClose, email }) => {
   const handleWhatsAppRegistration = () => {
     const message = `Hello Sourceasy, I would like to register my business. My email is ${email}.`;
-    const whatsappUrl = `https://wa.me/14155238886?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/916352615629?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 

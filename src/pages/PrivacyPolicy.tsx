@@ -98,7 +98,7 @@ const PrivacyPolicy: React.FC = () => {
           <h2>12. Contact Us</h2>
           <p>If you have any questions about this Privacy Policy or our privacy practices, please contact us at:</p>
           <p>
-            Email: aidhandho@gmail.com<br />
+            Email: support@gmail.com<br />
             Address: 601, Shikhar Complex, Navrangpura, Ahmedabad, Gujarat, India, 380009<br />
             Phone: +91 93275 57993
           </p>

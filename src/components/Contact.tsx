@@ -248,7 +248,7 @@ const Contact = () => {
                     </div>
                     <div className="info-content">
                       <p className="info-label">Email</p>
-                      <p className="info-value">nirav@sourceasy.ai</p>
+                      <p className="info-value">support@sourceasy.ai</p>
                     </div>
                   </div>
                   
