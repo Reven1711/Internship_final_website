@@ -24,6 +24,11 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
+import HowItWorksPage from './pages/HowItWorksPage';
+import AIAgentPage from './pages/AIAgentPage';
+import ContactPage from './pages/ContactPage';
+import CommunityPage from './pages/CommunityPage';
+import AboutPagePublic from './pages/AboutPagePublic';
 
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
@@ -93,6 +98,11 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
                   <Route path="/dashboard/admin" element={<AdminDashboard user={user} />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms-of-use" element={<TermsOfUse />} />
+                  <Route path="/howitworks" element={<HowItWorksPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/aiagent" element={<AIAgentPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/contact" element={<ContactPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/community" element={<CommunityPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/about" element={<AboutPagePublic user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </AnimatePresence>
@@ -113,6 +123,11 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
                   <Route path="/articles" element={<AllArticles />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms-of-use" element={<TermsOfUse />} />
+                  <Route path="/howitworks" element={<HowItWorksPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/aiagent" element={<AIAgentPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/contact" element={<ContactPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/community" element={<CommunityPage user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
+                  <Route path="/about" element={<AboutPagePublic user={user} onLoginClick={onLoginClick} onLogout={handleLogoutWithNavigation} />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </AnimatePresence>
