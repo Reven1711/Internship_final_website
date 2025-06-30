@@ -24,15 +24,29 @@ const NotFound = () => {
         transition: { duration: 0.5 },
       })}
     >
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9' }}>
+        <div style={{ textAlign: 'center', background: 'white', padding: isMobile ? '2rem 1rem' : '3rem 4rem', borderRadius: '1.5rem', boxShadow: '0 4px 32px rgba(0,0,0,0.08)' }}>
+          <img src="/Sourceasy-logo-Superfinal001.png" alt="Sourceasy Logo" style={{ width: isMobile ? '60px' : '80px', margin: '0 auto 1.5rem auto', display: 'block' }} />
+          <h1 style={{ fontSize: isMobile ? '3rem' : '5rem', fontWeight: 900, color: '#2563eb', marginBottom: '0.5rem', letterSpacing: '-0.05em' }}>404</h1>
+          <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '1rem' }}>Page Not Found</h2>
+          <p style={{ color: '#64748b', fontSize: isMobile ? '1rem' : '1.25rem', marginBottom: '2rem' }}>
+            Sorry, the page you are looking for does not exist or has been moved.<br />
+            If you believe this is an error, please contact our support team.
+          </p>
+          <a href="/" style={{
+            display: 'inline-block',
+            background: 'linear-gradient(135deg, #3A8DCA, #174A7C)',
+            color: 'white',
+            padding: isMobile ? '0.75rem 2rem' : '1rem 2.5rem',
+            borderRadius: '0.75rem',
+            fontWeight: 600,
+            fontSize: isMobile ? '1rem' : '1.15rem',
+            textDecoration: 'none',
+            boxShadow: '0 2px 8px rgba(58,141,202,0.12)',
+            transition: 'background 0.2s',
+          }}>Go to Homepage</a>
+        </div>
       </div>
-    </div>
     </PageWrapper>
   );
 };
