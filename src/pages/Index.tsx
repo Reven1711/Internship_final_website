@@ -28,7 +28,6 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    console.log('Index: Components mounting...');
     const sections = document.querySelectorAll('.animate-section');
     sections.forEach(section => {
       (section as HTMLElement).style.opacity = '1';
@@ -37,7 +36,6 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
 
     const timer = setTimeout(() => {
       setComponentsLoaded(true);
-      console.log('Index: Components loaded, initializing animations...');
     }, 50);
 
     return () => clearTimeout(timer);
@@ -58,8 +56,7 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
   }, []);
 
   const handleScrollToTop = () => {
-    console.log('Refreshing page'); // Debug log
-    window.location.reload(); // Refresh the page
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -75,24 +72,20 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
   }, []);
 
   useEffect(() => {
-    // Cross-page section scroll support
     const sectionId = sessionStorage.getItem('scrollToSection');
     if (sectionId) {
       const scrollToSection = (retryCount = 0) => {
         const section = document.getElementById(sectionId);
         if (section) {
-          // Add a small delay to ensure all components are rendered
           setTimeout(() => {
             section.scrollIntoView({ behavior: 'smooth' });
             sessionStorage.removeItem('scrollToSection');
           }, 300);
         } else if (retryCount < 10) {
-          // Retry if section is not found yet
           setTimeout(() => {
             scrollToSection(retryCount + 1);
           }, 100);
         } else {
-          console.warn(`Section '${sectionId}' not found after retries`);
           sessionStorage.removeItem('scrollToSection');
         }
       };
@@ -134,7 +127,6 @@ const Index: React.FC<IndexProps> = ({ user, onLoginClick, onLogout }) => {
       </PageWrapper>
       <Chatbot />
       
-      {/* Remove the back to top button on mobile devices */}
       {!isMobile && (
         <motion.button
           className="scroll-up-btn"

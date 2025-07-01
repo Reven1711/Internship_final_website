@@ -48,7 +48,6 @@ const checkEmailInDatabase = async (email: string) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error checking email in database:', error);
     return { exists: false, message: 'Database check failed' };
   }
 };
@@ -67,7 +66,6 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
       // Use React Router navigation instead of window.location.href
       navigate('/', { replace: true });
     } catch (error) {
-      console.error('Error during logout:', error);
       // Still navigate to homepage even if there's an error
       navigate('/', { replace: true });
     }

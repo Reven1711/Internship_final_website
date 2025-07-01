@@ -28,8 +28,13 @@ const Contact = () => {
     setSubmitStatus(null);
 
     try {
-      console.log('Submitting form data:', formData);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/send-email`, {
+      // Determine the correct API base URL
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
+        (window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+      
+      console.log('Using API base URL:', apiBaseUrl);
+      
+      const response = await fetch(`${apiBaseUrl}/api/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,11 +45,18 @@ const Contact = () => {
         }),
       });
 
-      const data = await response.json();
-      console.log('Server response:', data);
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        console.error('Response text:', await response.text());
+        throw new Error('Invalid response from server');
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
+        console.error('Server error response:', data);
+        throw new Error(data.error || data.details || 'Failed to send email');
       }
 
       setSubmitStatus('success');
@@ -56,7 +68,7 @@ const Contact = () => {
         message: ''
       });
     } catch (error) {
-      console.error('Form submission error:', error);
+      console.error('Contact form submission error:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);

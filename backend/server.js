@@ -19,12 +19,21 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // Middleware
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:6006",
-    methods: ["POST", "GET"],
+    origin: process.env.CORS_ORIGIN || ["http://localhost:6006", "https://sourceasy.ai", "https://www.sourceasy.ai"],
+    methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true,
   })
 );
 app.use(express.json());
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
+  });
+});
 
 // Create a transporter using Gmail
 const transporter = nodemailer.createTransport({
@@ -37,11 +46,7 @@ const transporter = nodemailer.createTransport({
 
 // Test email configuration
 transporter.verify(function (error, success) {
-  if (error) {
-    console.log("Email configuration error:", error);
-  } else {
-    console.log("Email server is ready to send messages");
-  }
+  // Email configuration verified
 });
 
 // Check if email exists in Pinecone database
@@ -72,10 +77,7 @@ app.post("/api/check-email", async (req, res) => {
       includeMetadata: true,
     });
 
-    console.log(
-      "Pinecone query response:",
-      JSON.stringify(queryResponse, null, 2)
-    );
+
 
     if (queryResponse.matches && queryResponse.matches.length > 0) {
       // Email found in database
@@ -138,10 +140,7 @@ app.post("/api/suppliers/email", async (req, res) => {
       includeMetadata: true,
     });
 
-    console.log(
-      "Pinecone query response for suppliers:",
-      JSON.stringify(queryResponse, null, 2)
-    );
+
 
     if (queryResponse.matches && queryResponse.matches.length > 0) {
       // Transform the data to match the frontend expectations
@@ -204,7 +203,7 @@ app.get("/api/buy-products/:email", async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    console.log(`Fetching buy products for email: ${email}`);
+
 
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
@@ -223,14 +222,11 @@ app.get("/api/buy-products/:email", async (req, res) => {
       includeMetadata: true,
     });
 
-    console.log(
-      "Pinecone query response for buy products:",
-      JSON.stringify(queryResponse, null, 2)
-    );
+
 
     if (queryResponse.matches && queryResponse.matches.length > 0) {
       const metadata = queryResponse.matches[0].metadata;
-      console.log("Found metadata:", metadata);
+      
 
       // Support both array and string for productList
       let products = [];
@@ -244,7 +240,7 @@ app.get("/api/buy-products/:email", async (req, res) => {
           products = [];
         }
       }
-      console.log("Parsed products:", products);
+      
 
       res.status(200).json({
         success: true,
@@ -252,7 +248,7 @@ app.get("/api/buy-products/:email", async (req, res) => {
         count: products.length,
       });
     } else {
-      console.log("No matches found for email:", email);
+
       // No products found for this email
       res.status(200).json({
         success: true,
@@ -505,10 +501,8 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     }
 
     // Delete existing record and recreate with updated data
-    console.log("Deleting existing record with ID:", recordId);
     await index.namespace("products").deleteOne(recordId);
 
-    console.log("Creating updated record with ID:", recordId);
     await index.namespace("products").upsert([
       {
         id: recordId,
@@ -539,19 +533,9 @@ app.delete("/api/buy-products/remove", async (req, res) => {
 
 // Email sending endpoint
 app.post("/api/send-email", async (req, res) => {
-  console.log("Received email request:", req.body);
-
   const { firstName, lastName, email, company, message, to } = req.body;
 
   if (!firstName || !lastName || !email || !company || !message || !to) {
-    console.log("Missing required fields:", {
-      firstName,
-      lastName,
-      email,
-      company,
-      message,
-      to,
-    });
     return res.status(400).json({ error: "Missing required fields" });
   }
 
@@ -570,9 +554,20 @@ app.post("/api/send-email", async (req, res) => {
   };
 
   try {
-    console.log("Attempting to send email to:", to);
+    // Check if email configuration is properly set
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error("Email configuration missing:", {
+        EMAIL_USER: !!process.env.EMAIL_USER,
+        EMAIL_PASS: !!process.env.EMAIL_PASS
+      });
+      return res.status(500).json({
+        error: "Email service not configured",
+        details: "Email credentials are missing"
+      });
+    }
+
     const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully:", info);
+    console.log("Email sent successfully:", info.messageId);
     res.status(200).json({ message: "Email sent successfully" });
   } catch (error) {
     console.error("Error sending email:", error);
@@ -629,7 +624,7 @@ app.post("/api/sell-products/add", async (req, res) => {
   try {
     const { email, products } = req.body;
 
-    console.log("Adding sell products request:", { email, products });
+
 
     if (!email || !products || !Array.isArray(products)) {
       return res.status(400).json({
@@ -670,7 +665,7 @@ app.post("/api/sell-products/add", async (req, res) => {
     }
 
     const profileData = profileQueryResponse.matches[0].metadata;
-    console.log("Found seller profile:", profileData);
+
 
     // Check for existing products to avoid duplicates
     const existingProductsQuery = await index.namespace("chemicals").query({
@@ -743,10 +738,7 @@ app.post("/api/sell-products/add", async (req, res) => {
     // Insert all products
     await index.namespace("chemicals").upsert(productsToInsert);
 
-    console.log(
-      "Successfully added products:",
-      products.map((p) => p.productName)
-    );
+
 
     res.status(200).json({
       success: true,
@@ -833,7 +825,7 @@ app.put("/api/sell-products/update", async (req, res) => {
       },
     ]);
 
-    console.log("Successfully updated product:", productId);
+
 
     res.status(200).json({
       success: true,
@@ -866,7 +858,7 @@ app.delete("/api/sell-products/delete", async (req, res) => {
     // Delete the product from the database
     await index.namespace("chemicals").deleteOne(productId);
 
-    console.log("Successfully deleted product:", productId);
+
 
     res.status(200).json({
       success: true,
@@ -920,12 +912,7 @@ app.post("/api/product-requests/submit", async (req, res) => {
       },
     ]);
 
-    console.log("Unapproved chemical request submitted:", {
-      requestId,
-      email,
-      productName,
-      status: "pending",
-    });
+
 
     res.status(200).json({
       success: true,
@@ -989,7 +976,7 @@ app.get("/api/unapproved-chemicals/pending", async (req, res) => {
 app.post("/api/unapproved-chemicals/approve", async (req, res) => {
   try {
     const { adminEmail, id, name: correctedName } = req.body;
-    console.log("Approve request received:", { adminEmail, id, correctedName });
+
 
     const adminEmails = process.env.ADMIN_EMAILS
       ? process.env.ADMIN_EMAILS.split(",")
@@ -1015,7 +1002,7 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
       includeMetadata: true,
     });
 
-    console.log("Query response for approval:", queryResponse);
+
 
     let name, email;
 
@@ -1034,11 +1021,9 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
 
       name = foundRecord.metadata.name;
       email = foundRecord.metadata.email;
-      console.log("Found unapproved chemical:", { name, email, id });
 
       const finalName = correctedName || name;
-      // Add to approved_chemicals (force overwrite)
-      await index.namespace("approved_chemicals").deleteOne(id); // Ensure old record is removed
+      // Add to approved_chemicals
       await index.namespace("approved_chemicals").upsert([
         {
           id: id,
@@ -1052,11 +1037,6 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
           },
         },
       ]);
-      console.log(
-        "Added to approved_chemicals (forced overwrite):",
-        id,
-        finalName
-      );
       // Fetch and log the record to verify
       const verifyResponse = await index.namespace("approved_chemicals").query({
         vector: dummyVector,
@@ -1085,8 +1065,7 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
       console.log("Found unapproved chemical:", { name, email, id });
 
       const finalName = correctedName || name;
-      // Add to approved_chemicals (force overwrite)
-      await index.namespace("approved_chemicals").deleteOne(id); // Ensure old record is removed
+      // Add to approved_chemicals
       await index.namespace("approved_chemicals").upsert([
         {
           id: id,
@@ -1100,11 +1079,6 @@ app.post("/api/unapproved-chemicals/approve", async (req, res) => {
           },
         },
       ]);
-      console.log(
-        "Added to approved_chemicals (forced overwrite):",
-        id,
-        finalName
-      );
       // Fetch and log the record to verify
       const verifyResponse = await index.namespace("approved_chemicals").query({
         vector: dummyVector,

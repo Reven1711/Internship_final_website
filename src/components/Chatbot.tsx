@@ -159,8 +159,6 @@ AI:
     }
   };
 
-  console.log('Gemini API Key:', import.meta.env.VITE_GEMINI_API_KEY);
-
   if (!isOpen) {
     return (
       <div className="chatbot-button-container">
