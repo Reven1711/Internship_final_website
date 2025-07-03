@@ -162,24 +162,38 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
         <div className="dashboard-mobile-content">
           {/* Mobile Company Switcher */}
           <div className="mobile-company-section">
-            <div className="mobile-company-header">
-              <Building className="mobile-company-icon" />
-              <span>Current Company</span>
-            </div>
-            <div className="mobile-company-name">{selectedCompany}</div>
-            <div className="mobile-company-list">
-              {userCompanies.map((company) => (
-                <button
-                  key={company.id}
-                  onClick={() => handleCompanySelect(company)}
-                  className={`mobile-company-item ${selectedCompany === company.name ? 'active' : ''}`}
-                >
-                  <div className="mobile-company-info">
-                    <span className="mobile-company-name-text">{company.name}</span>
-                    <span className="mobile-company-gst">GST: {company.gst}</span>
+            <div className="mobile-company-dropdown-container">
+              <button 
+                onClick={toggleCompanyDropdown}
+                className="mobile-company-dropdown-button"
+              >
+                <Building className="mobile-company-dropdown-icon" />
+                <span className="mobile-company-dropdown-text">{selectedCompany}</span>
+                <ChevronDown className={`mobile-company-dropdown-chevron ${isCompanyDropdownOpen ? 'rotated' : ''}`} />
+              </button>
+              
+              {isCompanyDropdownOpen && (
+                <div className="mobile-company-dropdown">
+                  <div className="mobile-company-dropdown-header">
+                    <span>Select Company</span>
                   </div>
-                </button>
-              ))}
+                  {userCompanies.map((company) => (
+                    <button
+                      key={company.id}
+                      onClick={() => handleCompanySelect(company)}
+                      className={`mobile-company-dropdown-item ${selectedCompany === company.name ? 'active' : ''}`}
+                    >
+                      <div className="mobile-company-dropdown-info">
+                        <span className="mobile-company-dropdown-name">{company.name}</span>
+                        <span className="mobile-company-dropdown-gst">GST: {company.gst}</span>
+                      </div>
+                      {selectedCompany === company.name && (
+                        <div className="mobile-company-dropdown-check">✓</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           
