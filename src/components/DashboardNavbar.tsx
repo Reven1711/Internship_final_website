@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, User, ShoppingCart, Package, LogOut, Menu, X, Shield } from 'lucide-react';
+import { Home, User, ShoppingCart, Package, LogOut, Menu, X, Shield, ChevronDown, Building } from 'lucide-react';
 import './DashboardNavbar.css';
 
 interface DashboardNavbarProps {
@@ -11,8 +11,18 @@ interface DashboardNavbarProps {
 const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState('Mumbai Chemical Solutions');
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Mock companies data - this will be replaced with backend data later
+  const userCompanies = [
+    { id: 1, name: 'Mumbai Chemical Solutions', gst: '22AAAAA0000A1Z5' },
+    { id: 2, name: 'Delhi Industrial Chemicals', gst: '07BBBBB0000B2Z6' },
+    { id: 3, name: 'Bangalore Pharma Ltd.', gst: '29CCCCC0000C3Z7' },
+    { id: 4, name: 'Chennai Petrochemicals', gst: '33DDDDD0000D4Z8' }
+  ];
 
   // Check if user is admin based on environment variable
   const adminEmails = import.meta.env.VITE_ADMIN_EMAILS ? 
@@ -44,6 +54,17 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  const toggleCompanyDropdown = () => {
+    setIsCompanyDropdownOpen(!isCompanyDropdownOpen);
+  };
+
+  const handleCompanySelect = (company: { id: number, name: string, gst: string }) => {
+    setSelectedCompany(company.name);
+    setIsCompanyDropdownOpen(false);
+    // TODO: Trigger data refetch based on selected company
+    console.log('Switched to company:', company.name);
+  };
+
   const handleLogout = () => {
     onLogout();
     navigate('/');
@@ -62,6 +83,41 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
             <div className="dashboard-logo" onClick={() => navigate('/dashboard')}>
               <img src="/Sourceasy-logo-Superfinal001.png" alt="Sourceasy Logo" className="dashboard-logo-img" />
               <h1 className="dashboard-logo-text">ourceasy</h1>
+            </div>
+
+            {/* Company Switcher */}
+            <div className="company-switcher-container">
+              <button 
+                onClick={toggleCompanyDropdown}
+                className="company-switcher-button"
+              >
+                <Building className="company-switcher-icon" />
+                <span className="company-switcher-text">{selectedCompany}</span>
+                <ChevronDown className={`company-switcher-chevron ${isCompanyDropdownOpen ? 'rotated' : ''}`} />
+              </button>
+              
+              {isCompanyDropdownOpen && (
+                <div className="company-dropdown">
+                  <div className="company-dropdown-header">
+                    <span>Select Company</span>
+                  </div>
+                  {userCompanies.map((company) => (
+                    <button
+                      key={company.id}
+                      onClick={() => handleCompanySelect(company)}
+                      className={`company-dropdown-item ${selectedCompany === company.name ? 'active' : ''}`}
+                    >
+                      <div className="company-dropdown-info">
+                        <span className="company-dropdown-name">{company.name}</span>
+                        <span className="company-dropdown-gst">GST: {company.gst}</span>
+                      </div>
+                      {selectedCompany === company.name && (
+                        <div className="company-dropdown-check">✓</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Right side cluster - navigation and logout */}
@@ -101,9 +157,34 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
         </div>
       </header>
 
-      {/* Mobile Navigation Menu */}
+      {/* Mobile Menu */}
       <div className={`dashboard-mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="dashboard-mobile-content">
+          {/* Mobile Company Switcher */}
+          <div className="mobile-company-section">
+            <div className="mobile-company-header">
+              <Building className="mobile-company-icon" />
+              <span>Current Company</span>
+            </div>
+            <div className="mobile-company-name">{selectedCompany}</div>
+            <div className="mobile-company-list">
+              {userCompanies.map((company) => (
+                <button
+                  key={company.id}
+                  onClick={() => handleCompanySelect(company)}
+                  className={`mobile-company-item ${selectedCompany === company.name ? 'active' : ''}`}
+                >
+                  <div className="mobile-company-info">
+                    <span className="mobile-company-name-text">{company.name}</span>
+                    <span className="mobile-company-gst">GST: {company.gst}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="dashboard-mobile-divider" />
+          
           {navItems.map(item => (
             <button
               key={item.id}
