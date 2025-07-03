@@ -1,0 +1,200 @@
+# Sourceasy - AI-Powered Chemical Sourcing Platform
+# Robots.txt file for better SEO and AI crawling
+
+# ========================================
+# SEARCH ENGINES
+# ========================================
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Google Images
+User-agent: Googlebot-Image
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.gif$
+Allow: /*.webp$
+Allow: /*.svg$
+
+# Google Mobile
+User-agent: Googlebot-Mobile
+Allow: /
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Bing Images
+User-agent: Bingbot-Image
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.gif$
+Allow: /*.webp$
+
+# Yahoo
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# DuckDuckGo
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+# Yandex
+User-agent: Yandex
+Allow: /
+Crawl-delay: 1
+
+# Baidu
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 2
+
+# ========================================
+# AI AND CHATBOT CRAWLERS
+# ========================================
+
+# OpenAI GPTBot
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 1
+
+# ChatGPT User
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic Claude
+User-agent: anthropic-ai
+Allow: /
+Crawl-delay: 1
+
+User-agent: Claude-Web
+Allow: /
+
+# Common Crawl
+User-agent: CCBot
+Allow: /
+Crawl-delay: 1
+
+# Omgili
+User-agent: Omgilibot
+Allow: /
+Crawl-delay: 1
+
+# ========================================
+# SOCIAL MEDIA BOTS
+# ========================================
+
+# Twitter
+User-agent: Twitterbot
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.gif$
+
+# Facebook
+User-agent: facebookexternalhit
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.gif$
+
+# LinkedIn
+User-agent: LinkedInBot
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+
+# Instagram
+User-agent: Instagram
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+
+# Pinterest
+User-agent: Pinterest
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+
+# ========================================
+# OTHER IMPORTANT BOTS
+# ========================================
+
+# Archive.org
+User-agent: ia_archiver
+Allow: /
+Crawl-delay: 1
+
+# Apple
+User-agent: Applebot
+Allow: /
+
+# ========================================
+# DISALLOWED PATHS
+# ========================================
+
+# Admin and private areas
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+Disallow: /backend/
+Disallow: /server/
+Disallow: /test/
+Disallow: /temp/
+Disallow: /tmp/
+
+# Development files
+Disallow: /*.log$
+Disallow: /*.sql$
+Disallow: /*.bak$
+Disallow: /*.old$
+Disallow: /*.tmp$
+
+# Configuration files
+Disallow: /.env
+Disallow: /.git/
+Disallow: /.github/
+Disallow: /package.json
+Disallow: /package-lock.json
+Disallow: /bun.lockb
+Disallow: /tsconfig.json
+Disallow: /vite.config.ts
+
+# ========================================
+# SITEMAP
+# ========================================
+
+# Sitemap location (add when you create one)
+# Sitemap: https://www.sourceasy.ai/sitemap.xml
+
+# ========================================
+# CRAWL DELAY FOR ALL OTHER BOTS
+# ========================================
+
+User-agent: *
+Allow: /
+Crawl-delay: 1
+
+# ========================================
+# ADDITIONAL METADATA
+# ========================================
+
+# Contact information for webmasters
+# Contact: aidhandho@gmail.com
+
+# Last updated
+# Last-updated: 2024-12-19
