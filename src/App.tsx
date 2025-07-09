@@ -29,6 +29,7 @@ import AIAgentPage from './pages/AIAgentPage';
 import ContactPage from './pages/ContactPage';
 import CommunityPage from './pages/CommunityPage';
 import AboutPagePublic from './pages/AboutPagePublic';
+import { CompanyProvider } from './contexts/CompanyContext';
 
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
@@ -244,16 +245,18 @@ const App = () => {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div style={isMobile && isLoading ? { display: 'none' } : {}}>
-        <AppContent 
-          user={user}
-          onLoginClick={handleLoginClick}
-          onLogout={handleLogout}
-          handleAuthSuccess={handleAuthSuccess}
-          isLoginModalOpen={isLoginModalOpen}
-          handleLoginClose={handleLoginClose}
-        />
-      </div>
+      <CompanyProvider>
+        <div style={isMobile && isLoading ? { display: 'none' } : {}}>
+          <AppContent 
+            user={user}
+            onLoginClick={handleLoginClick}
+            onLogout={handleLogout}
+            handleAuthSuccess={handleAuthSuccess}
+            isLoginModalOpen={isLoginModalOpen}
+            handleLoginClose={handleLoginClose}
+          />
+        </div>
+      </CompanyProvider>
       {/* Loader overlays only on mobile while loading */}
       {isMobile && isLoading && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#fff' }}>

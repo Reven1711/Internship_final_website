@@ -3,6 +3,7 @@ import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Pho
 import './Profile.css';
 import Popup from '../components/ui/Popup';
 import { useNavigate } from 'react-router-dom';
+import { useCompany } from '../contexts/CompanyContext';
 
 const mockProfile = {
   profilePic: 'https://www.gstatic.com/images/branding/product/2x/avatar_square_blue_512dp.png',
@@ -25,12 +26,7 @@ const TABS = [
 ];
 
 interface ProfileProps {
-  user?: {
-    displayName?: string;
-    email?: string;
-    photoURL?: string;
-    phone?: string;
-  };
+  user: any;
 }
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
@@ -122,6 +118,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   const [masterProductList, setMasterProductList] = useState<string[]>([]);
 
+  // Use company context
+  const { selectedCompany, loading: companyLoading } = useCompany();
+
   // Fetch master product list
   useEffect(() => {
     const fetchMasterProducts = async () => {
@@ -192,35 +191,60 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setBuyLoading(true);
-      const response = await fetch(`/api/buy-products/${encodeURIComponent(user.email)}`);
+      
+      // Build URL with query parameters if company is selected
+      let url = `/api/buy-products/${encodeURIComponent(user.email)}`;
+      const params = new URLSearchParams();
+      
+      if (selectedCompany) {
+        params.append('phoneNumber', selectedCompany.contact);
+        params.append('companyName', selectedCompany.name);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      console.log('🔍 Fetching buy products with URL:', url);
+      
+      const response = await fetch(url);
       const data = await response.json();
 
       if (response.ok) {
+        console.log('✅ Buy products fetched successfully:', data.products);
         setBuyProducts(data.products || []);
       } else {
-        console.error('Error fetching buy products:', data.error);
+        console.error('❌ Error fetching buy products:', data.error);
         setBuyProducts([]);
       }
     } catch (error) {
-      console.error('Error fetching buy products:', error);
+      console.error('❌ Error fetching buy products:', error);
       setBuyProducts([]);
     } finally {
       setBuyLoading(false);
     }
   };
 
-  // Fetch user's sell products from Pinecone
+  // Fetch user's sell products from Pinecone - now filtered by selected company
   const fetchSellProducts = async () => {
     if (!user?.email) return;
 
     try {
       setSellLoading(true);
+      const requestBody: any = { email: user.email };
+      
+      // Add company filters if a company is selected
+      if (selectedCompany) {
+        requestBody.companyName = selectedCompany.name;
+        requestBody.companyContact = selectedCompany.contact;
+      }
+
       const response = await fetch('/api/suppliers/email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: user.email }),
+        body: JSON.stringify(requestBody),
       });
       const data = await response.json();
 
@@ -238,13 +262,27 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
-  // Fetch profile data from backend
+  // Fetch profile data from backend - now based on selected company
   const fetchProfileData = async () => {
     if (!user?.email) return;
 
     try {
       setProfileLoading(true);
-      const response = await fetch(`/api/profile/${encodeURIComponent(user.email)}`);
+      
+      // Build URL with query parameters if company is selected
+      let url = `/api/profile/${encodeURIComponent(user.email)}`;
+      const params = new URLSearchParams();
+      
+      if (selectedCompany) {
+        params.append('companyName', selectedCompany.name);
+        params.append('companyContact', selectedCompany.contact);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setProfileData(data.profile);
@@ -259,94 +297,169 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
-  // Fetch quotations from database
+  // Fetch quotations from database - now based on selected company
   const fetchQuotations = async () => {
-    // Use phone number from profileData if available, otherwise fall back to user.phone or mock data
-    const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+    const phoneNumber = selectedCompany?.contact || profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
     
-    console.log('Fetching quotations with phone number:', phoneNumber);
-    console.log('Profile data:', profileData);
-    console.log('User data:', user);
+    console.log('🔍 Fetching quotations with phone number:', phoneNumber);
+    console.log('🎯 Selected company:', selectedCompany);
+    console.log('📋 Profile data:', profileData);
     
     if (!phoneNumber) {
-      console.log('No phone number available for fetching quotations');
+      console.log('❌ No phone number available for fetching quotations');
       setQuotationData([]);
       return;
     }
 
     try {
       setQuotationLoading(true);
-      const response = await fetch(`/api/quotations/${encodeURIComponent(phoneNumber)}`);
+      
+      // Build URL with query parameters if company is selected
+      let url = `/api/quotations/${encodeURIComponent(phoneNumber)}`;
+      const params = new URLSearchParams();
+      
+      if (selectedCompany && user?.email) {
+        params.append('email', user.email);
+        params.append('companyName', selectedCompany.name);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      console.log('🌐 Fetching quotations with URL:', url);
+      
+      const response = await fetch(url);
       const data = await response.json();
 
-      console.log('Quotations API response:', data);
+      console.log('📡 Quotations API response:', data);
 
       if (response.ok) {
         setQuotationData(data.quotations || []);
       } else {
-        console.error('Error fetching quotations:', data.error);
+        console.error('❌ Error fetching quotations:', data.error);
         setQuotationData([]);
       }
     } catch (error) {
-      console.error('Error fetching quotations:', error);
+      console.error('❌ Error fetching quotations:', error);
       setQuotationData([]);
     } finally {
       setQuotationLoading(false);
     }
   };
 
-  // Fetch inquiries from database
+  // Fetch inquiries from database - now based on selected company
   const fetchInquiries = async () => {
-    // Use phone number from profileData if available, otherwise fall back to user.phone or mock data
-    const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+    const phoneNumber = selectedCompany?.contact || profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
     
-    console.log('Fetching inquiries with phone number:', phoneNumber);
-    console.log('Profile data:', profileData);
-    console.log('User data:', user);
+    console.log('🔍 Fetching inquiries with phone number:', phoneNumber);
+    console.log('🎯 Selected company:', selectedCompany);
+    console.log('📋 Profile data:', profileData);
     
     if (!phoneNumber) {
-      console.log('No phone number available for fetching inquiries');
+      console.log('❌ No phone number available for fetching inquiries');
       setInquiryData([]);
       return;
     }
 
     try {
       setInquiryLoading(true);
-      const response = await fetch(`/api/inquiries/${encodeURIComponent(phoneNumber)}`);
+      
+      // Build URL with query parameters if company is selected
+      let url = `/api/inquiries/${encodeURIComponent(phoneNumber)}`;
+      const params = new URLSearchParams();
+      
+      if (selectedCompany && user?.email) {
+        params.append('email', user.email);
+        params.append('companyName', selectedCompany.name);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      console.log('🌐 Fetching inquiries with URL:', url);
+      
+      const response = await fetch(url);
       const data = await response.json();
 
-      console.log('Inquiries API response:', data);
+      console.log('📡 Inquiries API response:', data);
 
       if (response.ok) {
         setInquiryData(data.inquiries || []);
       } else {
-        console.error('Error fetching inquiries:', data.error);
+        console.error('❌ Error fetching inquiries:', data.error);
         setInquiryData([]);
       }
     } catch (error) {
-      console.error('Error fetching inquiries:', error);
+      console.error('❌ Error fetching inquiries:', error);
       setInquiryData([]);
     } finally {
       setInquiryLoading(false);
     }
   };
 
-  // Fetch data when component mounts
+  // Fetch data when component mounts or when selected company changes
   useEffect(() => {
-    if (user?.email) {
+    if (user?.email && !companyLoading) {
+      console.log('🔄 Refreshing data due to user email or company change');
+      console.log('🎯 Selected company:', selectedCompany);
+      
+      // Clear data immediately when company changes to prevent showing wrong data
+      setBuyProducts([]);
+      setSellProducts([]);
+      setBuyLoading(true);
+      setSellLoading(true);
+      
       fetchBuyProducts();
       fetchSellProducts();
       fetchProfileData();
     }
-  }, [user?.email]);
+  }, [user?.email, selectedCompany, companyLoading]);
 
-  // Fetch quotations and inquiries when profileData is available
+  // Fetch quotations and inquiries when profileData or selected company changes
   useEffect(() => {
-    if (profileData) {
+    if ((profileData || selectedCompany) && !companyLoading) {
+      console.log('🔄 Refreshing quotations and inquiries due to profile data or company change');
+      console.log('🎯 Selected company for history:', selectedCompany);
+      
+      // Clear history data immediately when company changes
+      setQuotationData([]);
+      setInquiryData([]);
+      setQuotationLoading(true);
+      setInquiryLoading(true);
+      
       fetchQuotations();
       fetchInquiries();
     }
-  }, [profileData]);
+  }, [profileData, selectedCompany, companyLoading]);
+
+  // Listen for company change events from the navbar
+  useEffect(() => {
+    const handleCompanyChange = (event: CustomEvent) => {
+      console.log('📡 Company change event received:', event.detail);
+      // Clear data immediately when company changes to prevent showing wrong data
+      if (user?.email && !companyLoading) {
+        setBuyProducts([]);
+        setSellProducts([]);
+        setBuyLoading(true);
+        setSellLoading(true);
+        
+        // Then refresh all data
+        fetchBuyProducts();
+        fetchSellProducts();
+        fetchProfileData();
+        fetchQuotations();
+        fetchInquiries();
+      }
+    };
+
+    window.addEventListener('companyChanged', handleCompanyChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange as EventListener);
+    };
+  }, [user?.email, companyLoading]);
 
   // Restore active tab from sessionStorage
   useEffect(() => {
@@ -430,15 +543,27 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddingProduct(true);
       setAddProductError('');
       setAddProductWarning('');
+      
+      // Prepare request body with company information
+      const requestBody: any = { 
+        email: user.email, 
+        productName: trimmedProductName 
+      };
+      
+      // Add company information if available
+      if (selectedCompany) {
+        requestBody.phoneNumber = selectedCompany.contact;
+        requestBody.companyName = selectedCompany.name;
+      }
+      
+      console.log('🔍 Adding buy product with request body:', requestBody);
+      
       const response = await fetch('/api/buy-products/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          email: user.email, 
-          productName: trimmedProductName 
-        }),
+        body: JSON.stringify(requestBody),
       });
       if (response.ok) {
         const data = await response.json();
@@ -512,15 +637,26 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     if (!user?.email) return;
 
     try {
+      // Prepare request body with company information
+      const requestBody: any = { 
+        email: user.email, 
+        productName: productName 
+      };
+      
+      // Add company information if available
+      if (selectedCompany) {
+        requestBody.phoneNumber = selectedCompany.contact;
+        requestBody.companyName = selectedCompany.name;
+      }
+      
+      console.log('🔍 Removing buy product with request body:', requestBody);
+      
       const response = await fetch('/api/buy-products/remove', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          email: user.email, 
-          productName: productName 
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -594,15 +730,23 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setAddingSellProduct(true);
       
       // Call backend API to add products (only valid ones)
+      const requestBody: any = {
+        email: user.email,
+        products: validProducts
+      };
+      
+      // Add company filters if a company is selected
+      if (selectedCompany) {
+        requestBody.phoneNumber = selectedCompany.contact;
+        requestBody.companyName = selectedCompany.name;
+      }
+      
       const response = await fetch('/api/sell-products/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: user.email,
-          products: validProducts
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -672,15 +816,24 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setUpdatingProduct(true);
       setEditProductError('');
       
+      const requestBody: any = {
+        productId: editingSellProduct.productId,
+        updatedData: editingSellProduct,
+        email: user.email
+      };
+      
+      // Add company filters if a company is selected
+      if (selectedCompany) {
+        requestBody.phoneNumber = selectedCompany.contact;
+        requestBody.companyName = selectedCompany.name;
+      }
+      
       const response = await fetch('/api/sell-products/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          productId: editingSellProduct.productId,
-          updatedData: editingSellProduct
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -707,15 +860,24 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     try {
       setDeletingSellProduct(productId);
+      
+      const requestBody: any = {
+        email: user.email,
+        productId: productId // Always Pinecone record ID
+      };
+      
+      // Add company filters if a company is selected
+      if (selectedCompany) {
+        requestBody.phoneNumber = selectedCompany.contact;
+        requestBody.companyName = selectedCompany.name;
+      }
+      
       const response = await fetch('/api/sell-products/delete', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          email: user.email, 
-          productId: productId 
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -970,9 +1132,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               
               <h2 className="section-title">Products You Buy</h2>
               
-              {buyLoading ? (
+              {companyLoading || buyLoading ? (
                 <div className="loading-state">
-                  <p>Loading your buy products...</p>
+                  <p>{companyLoading ? 'Loading company data...' : 'Loading your buy products...'}</p>
                 </div>
               ) : buyProducts.length === 0 ? (
                 <div className="empty-state">
@@ -1052,9 +1214,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               
               <h2 className="section-title">Products You Sell</h2>
               
-              {sellLoading ? (
+              {companyLoading || sellLoading ? (
                 <div className="loading-state">
-                  <p>Loading your products...</p>
+                  <p>{companyLoading ? 'Loading company data...' : 'Loading your products...'}</p>
                 </div>
               ) : sellProducts.length === 0 ? (
                 <div className="empty-state">
@@ -1104,7 +1266,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                     className="edit-btn" 
                                     onClick={() => {
                                       setShowDeleteSellModal(true);
-                                      setSellProductToDelete(product.productId);
+                                      setSellProductToDelete(product.productId); // Always use Pinecone record ID
                                     }}
                                     disabled={deletingSellProduct === product.productId}
                                   >
@@ -1229,47 +1391,49 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                       onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
-                      <input
-                        type="date"
-                        value={inquiryStartDate}
-                        onChange={(e) => setInquiryStartDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
-                      <input
-                        type="date"
-                        value={inquiryEndDate}
-                        onChange={(e) => setInquiryEndDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
+                    <div className="date-range-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
+                        <input
+                          type="date"
+                          value={inquiryStartDate}
+                          onChange={(e) => setInquiryStartDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
+                        <input
+                          type="date"
+                          value={inquiryEndDate}
+                          onChange={(e) => setInquiryEndDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
                     </div>
                   </>
                 )}
@@ -1296,47 +1460,49 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                       onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
-                      <input
-                        type="date"
-                        value={quotationStartDate}
-                        onChange={(e) => setQuotationStartDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
-                      <input
-                        type="date"
-                        value={quotationEndDate}
-                        onChange={(e) => setQuotationEndDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
+                    <div className="date-range-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
+                        <input
+                          type="date"
+                          value={quotationStartDate}
+                          onChange={(e) => setQuotationStartDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
+                        <input
+                          type="date"
+                          value={quotationEndDate}
+                          onChange={(e) => setQuotationEndDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
                     </div>
                   </>
                 )}
@@ -1345,7 +1511,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               {/* Inquiry Raised Content */}
               {historyTab === 'inquiry' && (
                 <div className="inquiry-content">
-                  {inquiryLoading ? (
+                  {companyLoading || inquiryLoading ? (
                     <div style={{
                       display: 'flex',
                       justifyContent: 'center',
@@ -1360,7 +1526,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                           fontSize: '16px',
                           marginBottom: '8px'
                         }}>
-                          Loading inquiries...
+                          {companyLoading ? 'Loading company data...' : 'Loading inquiries...'}
                         </div>
                         <div style={{
                           fontSize: '14px',
@@ -1539,7 +1705,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               {/* Quotation Sent Content */}
               {historyTab === 'quotation' && (
                 <div className="quotation-content">
-                  {quotationLoading ? (
+                  {companyLoading || quotationLoading ? (
                     <div style={{
                       display: 'flex',
                       justifyContent: 'center',
@@ -1554,7 +1720,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                           fontSize: '16px',
                           marginBottom: '8px'
                         }}>
-                          Loading quotations...
+                          {companyLoading ? 'Loading company data...' : 'Loading quotations...'}
                         </div>
                         <div style={{
                           fontSize: '14px',

@@ -19,7 +19,13 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // Middleware
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || ["http://localhost:6006", "https://sourceasy.ai", "https://www.sourceasy.ai"],
+    origin: [
+      "http://localhost:6006",
+      "http://localhost:8080",
+      "http://localhost:8081", // Added for Vite dev server fallback
+      "https://sourceasy.ai",
+      "https://www.sourceasy.ai"
+    ],
     methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true,
   })
@@ -115,7 +121,7 @@ app.post("/api/check-email", async (req, res) => {
 // Get all suppliers/products for a specific email
 app.post("/api/suppliers/email", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, companyName, companyContact } = req.body;
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -130,17 +136,28 @@ app.post("/api/suppliers/email", async (req, res) => {
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
+    // Build filter based on provided parameters
+    let filter = {
+      "Seller Email Address": { $eq: email },
+    };
+
+    // Add company name filter if provided
+    if (companyName) {
+      filter["Seller Name"] = { $eq: companyName };
+    }
+
+    // Add company contact filter if provided
+    if (companyContact) {
+      filter["Seller POC Contact Number"] = { $eq: companyContact };
+    }
+
     // Query the index for all records with the email in the "chemicals" namespace
     const queryResponse = await index.namespace("chemicals").query({
       vector: dummyVector,
-      filter: {
-        "Seller Email Address": { $eq: email },
-      },
+      filter: filter,
       topK: 100, // Get up to 100 products for this email
       includeMetadata: true,
     });
-
-
 
     if (queryResponse.matches && queryResponse.matches.length > 0) {
       // Transform the data to match the frontend expectations
@@ -186,7 +203,7 @@ app.post("/api/suppliers/email", async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error fetching suppliers by email:", error);
+    console.error("Error fetching suppliers:", error);
     res.status(500).json({
       error: "Failed to fetch suppliers",
       details: error.message,
@@ -198,12 +215,15 @@ app.post("/api/suppliers/email", async (req, res) => {
 app.get("/api/buy-products/:email", async (req, res) => {
   try {
     const { email } = req.params;
+    const { phoneNumber, companyName } = req.query;
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
     }
 
-
+    console.log(`🔍 Fetching buy products for email: ${email}`);
+    console.log(`📞 Phone number (optional): ${phoneNumber}`);
+    console.log(`🏢 Company name (optional): ${companyName}`);
 
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
@@ -212,22 +232,34 @@ app.get("/api/buy-products/:email", async (req, res) => {
     const dummyVector = new Array(1024).fill(0);
     dummyVector[0] = 1;
 
+    // Build filter using all three fields for proper company separation
+    let filter = {
+      email: { $eq: email },
+    };
+
+    // Add phone number filter if provided
+    if (phoneNumber) {
+      filter.phoneNumber = { $eq: phoneNumber };
+    }
+
+    // Add company name filter if provided
+    if (companyName) {
+      filter.companyName = { $eq: companyName };
+    }
+
+    console.log(`🔍 Using filter:`, filter);
+
     // Query the index for the email in the "products" namespace
     const queryResponse = await index.namespace("products").query({
       vector: dummyVector,
-      filter: {
-        email: { $eq: email },
-      },
+      filter: filter,
       topK: 1,
       includeMetadata: true,
     });
 
-
-
     if (queryResponse.matches && queryResponse.matches.length > 0) {
       const metadata = queryResponse.matches[0].metadata;
       
-
       // Support both array and string for productList
       let products = [];
       if (Array.isArray(metadata.productList)) {
@@ -241,15 +273,16 @@ app.get("/api/buy-products/:email", async (req, res) => {
         }
       }
       
-
+      console.log(`✅ Found ${products.length} buy products for email: ${email}`);
+      
       res.status(200).json({
         success: true,
         products: products,
         count: products.length,
       });
     } else {
-
       // No products found for this email
+      console.log(`❌ No buy products found for email: ${email}`);
       res.status(200).json({
         success: true,
         products: [],
@@ -274,13 +307,17 @@ function normalizeName(name) {
 // Add a product to user's buy list
 app.post("/api/buy-products/add", async (req, res) => {
   try {
-    const { email, productName } = req.body;
+    const { email, productName, phoneNumber, companyName } = req.body;
 
     if (!email || !productName) {
       return res
         .status(400)
         .json({ error: "Email and product name are required" });
     }
+
+    console.log(`🔍 Adding buy product: ${productName} for email: ${email}`);
+    console.log(`📞 Phone number: ${phoneNumber}`);
+    console.log(`🏢 Company name: ${companyName}`);
 
     // AI Moderation
     const prompt = `You are a content moderator for a chemical trading platform. Analyze the following product name and determine if it contains:
@@ -344,10 +381,23 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
     const dummyVector = new Array(1024).fill(0);
     dummyVector[0] = 1;
 
+    // Build filter to find existing record
+    let filter = { email: { $eq: email } };
+    
+    // Add phone number filter if provided
+    if (phoneNumber) {
+      filter.phoneNumber = { $eq: phoneNumber };
+    }
+    
+    // Add company name filter if provided
+    if (companyName) {
+      filter.companyName = { $eq: companyName };
+    }
+
     // First, check if user already has a record in the "products" namespace
     const queryResponse = await index.namespace("products").query({
       vector: dummyVector,
-      filter: { email: { $eq: email } },
+      filter: filter,
       topK: 1,
       includeMetadata: true,
     });
@@ -380,32 +430,40 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
 
     // Add new product
     existingProducts.push(productName);
+    
+    // Prepare metadata with all fields
+    const metadata = {
+      email: email,
+      productList: JSON.stringify(existingProducts),
+      productCount: existingProducts.length,
+    };
+    
+    // Add optional fields if provided
+    if (phoneNumber) {
+      metadata.phoneNumber = phoneNumber;
+    }
+    if (companyName) {
+      metadata.companyName = companyName;
+    }
+    
     if (recordId) {
+      metadata.id = recordId;
       await index.namespace("products").deleteOne(recordId);
       await index.namespace("products").upsert([
         {
           id: recordId,
           values: dummyVector,
-          metadata: {
-            email: email,
-            id: recordId,
-            productList: JSON.stringify(existingProducts),
-            productCount: existingProducts.length,
-          },
+          metadata: metadata,
         },
       ]);
     } else {
       const newId = `buy_products_${Date.now()}`;
+      metadata.id = newId;
       await index.namespace("products").upsert([
         {
           id: newId,
           values: dummyVector,
-          metadata: {
-            email: email,
-            id: newId,
-            productList: JSON.stringify(existingProducts),
-            productCount: existingProducts.length,
-          },
+          metadata: metadata,
         },
       ]);
     }
@@ -415,19 +473,32 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
     const chemicalsDummyVector = new Array(1536).fill(0);
     chemicalsDummyVector[0] = 1;
     const unapprovedId = `unapproved_${Date.now()}`;
+    
+    const unapprovedMetadata = {
+      name: productName,
+      email: email,
+      submittedAt: new Date().toISOString(),
+      status: "pending",
+      aiVerified: true,
+    };
+    
+    // Add optional fields to unapproved chemicals
+    if (phoneNumber) {
+      unapprovedMetadata.phoneNumber = phoneNumber;
+    }
+    if (companyName) {
+      unapprovedMetadata.companyName = companyName;
+    }
+    
     await chemicalsIndex.namespace("unapproved_chemicals").upsert([
       {
         id: unapprovedId,
         values: chemicalsDummyVector,
-        metadata: {
-          name: productName,
-          email: email,
-          submittedAt: new Date().toISOString(),
-          status: "pending",
-          aiVerified: true,
-        },
+        metadata: unapprovedMetadata,
       },
     ]);
+
+    console.log(`✅ Successfully added product: ${productName} for email: ${email}`);
 
     res.status(200).json({
       success: true,
@@ -447,13 +518,17 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
 // Remove a product from user's buy list
 app.delete("/api/buy-products/remove", async (req, res) => {
   try {
-    const { email, productName } = req.body;
+    const { email, productName, phoneNumber, companyName } = req.body;
 
     if (!email || !productName) {
       return res
         .status(400)
         .json({ error: "Email and product name are required" });
     }
+
+    console.log(`🔍 Removing buy product: ${productName} for email: ${email}`);
+    console.log(`📞 Phone number: ${phoneNumber}`);
+    console.log(`🏢 Company name: ${companyName}`);
 
     // Get the buy products index
     const index = pinecone.index("products-you-buy");
@@ -462,12 +537,23 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     const dummyVector = new Array(1024).fill(0);
     dummyVector[0] = 1;
 
+    // Build filter to find existing record
+    let filter = { email: { $eq: email } };
+    
+    // Add phone number filter if provided
+    if (phoneNumber) {
+      filter.phoneNumber = { $eq: phoneNumber };
+    }
+    
+    // Add company name filter if provided
+    if (companyName) {
+      filter.companyName = { $eq: companyName };
+    }
+
     // Find user's record in the "products" namespace
     const queryResponse = await index.namespace("products").query({
       vector: dummyVector,
-      filter: {
-        email: { $eq: email },
-      },
+      filter: filter,
       topK: 1,
       includeMetadata: true,
     });
@@ -479,6 +565,7 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     }
 
     const metadata = queryResponse.matches[0].metadata;
+    let existingProducts = [];
     // Support both array and string for productList
     if (Array.isArray(metadata.productList)) {
       existingProducts = metadata.productList;
@@ -500,6 +587,24 @@ app.delete("/api/buy-products/remove", async (req, res) => {
       });
     }
 
+    // Prepare updated metadata with all fields
+    const updatedMetadata = {
+      email: email,
+      productList: JSON.stringify(updatedProducts),
+      productCount: updatedProducts.length,
+    };
+    
+    // Add optional fields if they exist in the original record
+    if (metadata.phoneNumber) {
+      updatedMetadata.phoneNumber = metadata.phoneNumber;
+    }
+    if (metadata.companyName) {
+      updatedMetadata.companyName = metadata.companyName;
+    }
+    if (metadata.id) {
+      updatedMetadata.id = metadata.id;
+    }
+
     // Delete existing record and recreate with updated data
     await index.namespace("products").deleteOne(recordId);
 
@@ -507,14 +612,11 @@ app.delete("/api/buy-products/remove", async (req, res) => {
       {
         id: recordId,
         values: dummyVector,
-        metadata: {
-          email: email,
-          id: recordId,
-          productList: JSON.stringify(updatedProducts),
-          productCount: updatedProducts.length,
-        },
+        metadata: updatedMetadata,
       },
     ]);
+
+    console.log(`✅ Successfully removed product: ${productName} for email: ${email}`);
 
     res.status(200).json({
       success: true,
@@ -578,24 +680,132 @@ app.post("/api/send-email", async (req, res) => {
   }
 });
 
-// Get profile info for a specific email
-app.get("/api/profile/:email", async (req, res) => {
+// Get all companies for a specific email and phone number
+app.get("/api/user-companies/:email", async (req, res) => {
   try {
     const { email } = req.params;
+    const { phoneNumber } = req.query;
+
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
     }
+
     // Get the chemicals-new index
     const index = pinecone.index("chemicals-new");
+
     // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
-    // Query the index for the email in the "chemicals" namespace
+
+    // Get all companies with the same email
     const queryResponse = await index.namespace("chemicals").query({
       vector: dummyVector,
       filter: {
         "Seller Email Address": { $eq: email },
       },
+      topK: 1000, // Get up to 1000 records to find all companies
+      includeMetadata: true,
+    });
+
+    if (queryResponse.matches && queryResponse.matches.length > 0) {
+      // Extract unique companies based on Seller Name and Seller POC Contact Number
+      const companiesMap = new Map();
+      
+      queryResponse.matches.forEach((match) => {
+        const metadata = match.metadata;
+        const sellerName = metadata["Seller Name"];
+        const sellerContact = metadata["Seller POC Contact Number"];
+        const gstNumber = metadata["GST Number"] || "N/A";
+        const region = metadata["Region"] || "Unknown";
+        const sellerAddress = metadata["Seller Address"] || "N/A";
+        
+        // Create a unique key for each company (name + contact)
+        const companyKey = `${sellerName}_${sellerContact}`;
+        
+        if (!companiesMap.has(companyKey)) {
+          companiesMap.set(companyKey, {
+            id: companyKey,
+            name: sellerName,
+            gst: gstNumber,
+            contact: sellerContact,
+            region: region,
+            address: sellerAddress,
+            email: metadata["Seller Email Address"],
+            verified: metadata["Seller Verified"] || false,
+            rating: metadata["Seller Rating"] || 0
+          });
+        }
+      });
+
+      // Convert map to array
+      let companies = Array.from(companiesMap.values());
+
+      // If phone number is provided, filter to only companies with that phone number
+      if (phoneNumber) {
+        companies = companies.filter(company => company.contact === phoneNumber);
+      }
+
+      // Only log once per request, not for every company
+      console.log(`Found ${companies.length} unique companies for email: ${email}`);
+
+      res.status(200).json({
+        success: true,
+        companies: companies,
+        count: companies.length,
+      });
+    } else {
+      // No companies found for this email
+      res.status(200).json({
+        success: true,
+        companies: [],
+        count: 0,
+        message: "No companies found for this email",
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching user companies:", error);
+    res.status(500).json({
+      error: "Failed to fetch user companies",
+      details: error.message,
+    });
+  }
+});
+
+// Get profile info for a specific email
+app.get("/api/profile/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { companyName, companyContact } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+    
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+    // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+    
+    // Build filter based on provided parameters
+    let filter = {
+      "Seller Email Address": { $eq: email },
+    };
+
+    // Add company name filter if provided
+    if (companyName) {
+      filter["Seller Name"] = { $eq: companyName };
+    }
+
+    // Add company contact filter if provided
+    if (companyContact) {
+      filter["Seller POC Contact Number"] = { $eq: companyContact };
+    }
+    
+    // Query the index for the email in the "chemicals" namespace
+    const queryResponse = await index.namespace("chemicals").query({
+      vector: dummyVector,
+      filter: filter,
       topK: 1,
       includeMetadata: true,
     });
@@ -611,7 +821,8 @@ app.get("/api/profile/:email", async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error fetching profile info:", error);
+    console.error
+    ("Error fetching profile info:", error);
     res.status(500).json({
       error: "Failed to fetch profile info",
       details: error.message,
@@ -622,9 +833,7 @@ app.get("/api/profile/:email", async (req, res) => {
 // Add sell products for a specific email
 app.post("/api/sell-products/add", async (req, res) => {
   try {
-    const { email, products } = req.body;
-
-
+    const { email, products, phoneNumber, companyName } = req.body;
 
     if (!email || !products || !Array.isArray(products)) {
       return res.status(400).json({
@@ -638,6 +847,10 @@ app.post("/api/sell-products/add", async (req, res) => {
       });
     }
 
+    console.log(`🔍 Adding sell products for email: ${email}`);
+    console.log(`📞 Phone number: ${phoneNumber}`);
+    console.log(`🏢 Company name: ${companyName}`);
+
     // Get the chemicals-new index
     const index = pinecone.index("chemicals-new");
 
@@ -645,12 +858,25 @@ app.post("/api/sell-products/add", async (req, res) => {
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
+    // Build filter to find seller's profile data
+    let filter = {
+      "Seller Email Address": { $eq: email },
+    };
+
+    // Add company name filter if provided
+    if (companyName) {
+      filter["Seller Name"] = { $eq: companyName };
+    }
+
+    // Add phone number filter if provided
+    if (phoneNumber) {
+      filter["Seller POC Contact Number"] = { $eq: phoneNumber };
+    }
+
     // First, get the seller's profile data to use for the new products
     const profileQueryResponse = await index.namespace("chemicals").query({
       vector: dummyVector,
-      filter: {
-        "Seller Email Address": { $eq: email },
-      },
+      filter: filter,
       topK: 1,
       includeMetadata: true,
     });
@@ -673,6 +899,8 @@ app.post("/api/sell-products/add", async (req, res) => {
       filter: {
         "Seller Email Address": { $eq: email },
         "Product Name": { $in: products.map((p) => p.productName) },
+        ...(companyName && { "Seller Name": { $eq: companyName } }),
+        ...(phoneNumber && { "Seller POC Contact Number": { $eq: phoneNumber } }),
       },
       topK: 100,
       includeMetadata: true,
@@ -758,13 +986,17 @@ app.post("/api/sell-products/add", async (req, res) => {
 // Update a sell product
 app.put("/api/sell-products/update", async (req, res) => {
   try {
-    const { productId, updatedData } = req.body;
+    const { productId, updatedData, email, phoneNumber, companyName } = req.body;
 
     if (!productId || !updatedData) {
       return res.status(400).json({
         error: "Product ID and updated data are required",
       });
     }
+
+    console.log(`🔍 Updating sell product: ${productId} for email: ${email}`);
+    console.log(`📞 Phone number: ${phoneNumber}`);
+    console.log(`🏢 Company name: ${companyName}`);
 
     // Get the chemicals-new index
     const index = pinecone.index("chemicals-new");
@@ -773,12 +1005,26 @@ app.put("/api/sell-products/update", async (req, res) => {
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
+    // Build filter to find the specific product
+    let filter = {
+      "Product ID": { $eq: productId },
+    };
+
+    // Add additional filters if provided for extra security
+    if (email) {
+      filter["Seller Email Address"] = { $eq: email };
+    }
+    if (companyName) {
+      filter["Seller Name"] = { $eq: companyName };
+    }
+    if (phoneNumber) {
+      filter["Seller POC Contact Number"] = { $eq: phoneNumber };
+    }
+
     // First, get the existing product to preserve seller information
     const queryResponse = await index.namespace("chemicals").query({
       vector: dummyVector,
-      filter: {
-        "Product ID": { $eq: productId },
-      },
+      filter: filter,
       topK: 1,
       includeMetadata: true,
     });
@@ -852,13 +1098,8 @@ app.delete("/api/sell-products/delete", async (req, res) => {
       });
     }
 
-    // Get the chemicals-new index
-    const index = pinecone.index("chemicals-new");
-
-    // Delete the product from the database
-    await index.namespace("chemicals").deleteOne(productId);
-
-
+    // Delete the product directly by Pinecone record ID
+    await pinecone.index("chemicals-new").namespace("chemicals").deleteOne(productId);
 
     res.status(200).json({
       success: true,
@@ -1338,6 +1579,7 @@ app.get("/api/approved-chemicals", async (req, res) => {
 app.get("/api/quotations/:sellerContact", async (req, res) => {
   try {
     const { sellerContact } = req.params;
+    const { email, companyName } = req.query;
 
     if (!sellerContact) {
       return res.status(400).json({
@@ -1346,6 +1588,7 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
     }
 
     console.log(`Fetching quotations for seller contact: ${sellerContact}`);
+    console.log(`Additional filters - Email: ${email}, Company: ${companyName}`);
 
     // Get the chemicals-new index
     const index = pinecone.index("chemicals-new");
@@ -1354,12 +1597,25 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
+    // Build filter based on provided parameters
+    let filter = {
+      sellerContact: { $eq: sellerContact },
+    };
+
+    // Add email filter if provided
+    if (email) {
+      filter.sellerEmail = { $eq: email };
+    }
+
+    // Add company name filter if provided
+    if (companyName) {
+      filter.sellerCompany = { $eq: companyName };
+    }
+
     // Query for all quotations by this seller contact in the quotations namespace
     const queryResponse = await index.namespace("quotations").query({
       vector: dummyVector,
-      filter: {
-        sellerContact: { $eq: sellerContact },
-      },
+      filter: filter,
       topK: 100, // Get up to 100 quotations
       includeMetadata: true,
     });
@@ -1433,6 +1689,7 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
 app.get("/api/inquiries/:userNumber", async (req, res) => {
   try {
     const { userNumber } = req.params;
+    const { email, companyName } = req.query;
 
     if (!userNumber) {
       return res.status(400).json({
@@ -1441,6 +1698,7 @@ app.get("/api/inquiries/:userNumber", async (req, res) => {
     }
 
     console.log(`Fetching inquiries for user number: ${userNumber}`);
+    console.log(`Additional filters - Email: ${email}, Company: ${companyName}`);
 
     // Get the chemicals-new index
     const index = pinecone.index("chemicals-new");
@@ -1468,11 +1726,24 @@ app.get("/api/inquiries/:userNumber", async (req, res) => {
     // Try each format until we find a match
     for (const format of phoneFormats) {
       try {
+        // Build filter based on provided parameters
+        let filter = {
+          userNumber: { $eq: format },
+        };
+
+        // Add email filter if provided
+        if (email) {
+          filter.userEmail = { $eq: email };
+        }
+
+        // Add company name filter if provided
+        if (companyName) {
+          filter.userCompany = { $eq: companyName };
+        }
+
         const response = await index.namespace("buyers").query({
           vector: dummyVector,
-          filter: {
-            userNumber: { $eq: format },
-          },
+          filter: filter,
           topK: 100, // Get up to 100 inquiries
           includeMetadata: true,
         });

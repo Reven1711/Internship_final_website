@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, User, ShoppingCart, Package, LogOut, Menu, X, Shield, ChevronDown, Building } from 'lucide-react';
+import { Home, User, Shield, LogOut, Building, ChevronDown } from 'lucide-react';
+import { useCompany } from '../contexts/CompanyContext';
 import './DashboardNavbar.css';
 
 interface DashboardNavbarProps {
@@ -12,17 +13,14 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState('Mumbai Chemical Solutions');
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Use company context instead of mock data
+  const { companies, selectedCompany, setSelectedCompany, fetchCompanies, loading, error } = useCompany();
 
-  // Mock companies data - this will be replaced with backend data later
-  const userCompanies = [
-    { id: 1, name: 'Mumbai Chemical Solutions', gst: '22AAAAA0000A1Z5' },
-    { id: 2, name: 'Delhi Industrial Chemicals', gst: '07BBBBB0000B2Z6' },
-    { id: 3, name: 'Bangalore Pharma Ltd.', gst: '29CCCCC0000C3Z7' },
-    { id: 4, name: 'Chennai Petrochemicals', gst: '33DDDDD0000D4Z8' }
-  ];
+  // Add a ref to track if we've already fetched companies for this user
+  const hasFetchedRef = useRef<Set<string>>(new Set());
 
   // Check if user is admin based on environment variable
   const adminEmails = import.meta.env.VITE_ADMIN_EMAILS ? 
@@ -41,6 +39,30 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
     navItems.push({ id: 'admin', label: 'Admin', icon: Shield, path: '/dashboard/admin' });
   }
 
+  // Fetch companies when user changes - only once per user
+  useEffect(() => {
+    if (user?.email && !hasFetchedRef.current.has(user.email)) {
+      console.log('👤 User email detected:', user.email);
+      console.log('🔄 Triggering company fetch...');
+      // Fetch all companies for this email without phone number filter
+      fetchCompanies(user.email);
+      // Mark this user as fetched
+      hasFetchedRef.current.add(user.email);
+    } else if (!user?.email) {
+      console.log('❌ No user email available');
+      // Clear the fetched set when user logs out
+      hasFetchedRef.current.clear();
+    }
+  }, [user?.email]); // Remove fetchCompanies from dependency array
+
+  // Add debugging for companies state
+  useEffect(() => {
+    console.log('📋 Companies state updated:', companies);
+    console.log('🎯 Selected company:', selectedCompany);
+    console.log('⏳ Loading state:', loading);
+    console.log('❌ Error state:', error);
+  }, [companies, selectedCompany, loading, error]);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -58,11 +80,21 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
     setIsCompanyDropdownOpen(!isCompanyDropdownOpen);
   };
 
-  const handleCompanySelect = (company: { id: number, name: string, gst: string }) => {
-    setSelectedCompany(company.name);
+  const handleCompanySelect = (company: any) => {
+    console.log('🎯 Company selected:', company);
+    setSelectedCompany(company);
     setIsCompanyDropdownOpen(false);
-    // TODO: Trigger data refetch based on selected company
-    console.log('Switched to company:', company.name);
+    
+    // Store the selected company in localStorage for persistence
+    localStorage.setItem('selectedCompany', JSON.stringify(company));
+    
+    // Trigger a data refresh by dispatching a custom event
+    // This will notify all components to refetch their data
+    window.dispatchEvent(new CustomEvent('companyChanged', { 
+      detail: { company } 
+    }));
+    
+    console.log('🔄 Company change event dispatched');
   };
 
   const handleLogout = () => {
@@ -73,6 +105,10 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
   const isActive = (path: string) => {
     return location.pathname === path;
   };
+
+  // Show loading state or fallback if no companies
+  const displayCompanyName = selectedCompany?.name || 'Loading...';
+  const hasMultipleCompanies = companies.length > 1;
 
   return (
     <>
@@ -85,40 +121,43 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
               <h1 className="dashboard-logo-text">ourceasy</h1>
             </div>
 
-            {/* Company Switcher */}
-            <div className="company-switcher-container">
-              <button 
-                onClick={toggleCompanyDropdown}
-                className="company-switcher-button"
-              >
-                <Building className="company-switcher-icon" />
-                <span className="company-switcher-text">{selectedCompany}</span>
-                <ChevronDown className={`company-switcher-chevron ${isCompanyDropdownOpen ? 'rotated' : ''}`} />
-              </button>
-              
-              {isCompanyDropdownOpen && (
-                <div className="company-dropdown">
-                  <div className="company-dropdown-header">
-                    <span>Select Company</span>
+            {/* Company Switcher - only show if user has multiple companies */}
+            {hasMultipleCompanies && (
+              <div className="company-switcher-container">
+                <button 
+                  onClick={toggleCompanyDropdown}
+                  className="company-switcher-button"
+                  disabled={loading}
+                >
+                  <Building className="company-switcher-icon" />
+                  <span className="company-switcher-text">{displayCompanyName}</span>
+                  <ChevronDown className={`company-switcher-chevron ${isCompanyDropdownOpen ? 'rotated' : ''}`} />
+                </button>
+                
+                {isCompanyDropdownOpen && (
+                  <div className="company-dropdown">
+                    <div className="company-dropdown-header">
+                      <span>Select Company</span>
+                    </div>
+                    {companies.map((company) => (
+                      <button
+                        key={company.id}
+                        onClick={() => handleCompanySelect(company)}
+                        className={`company-dropdown-item ${selectedCompany?.id === company.id ? 'active' : ''}`}
+                      >
+                        <div className="company-dropdown-info">
+                          <span className="company-dropdown-name">{company.name}</span>
+                          <span className="company-dropdown-gst">GST: {company.gst}</span>
+                        </div>
+                        {selectedCompany?.id === company.id && (
+                          <div className="company-dropdown-check">✓</div>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                  {userCompanies.map((company) => (
-                    <button
-                      key={company.id}
-                      onClick={() => handleCompanySelect(company)}
-                      className={`company-dropdown-item ${selectedCompany === company.name ? 'active' : ''}`}
-                    >
-                      <div className="company-dropdown-info">
-                        <span className="company-dropdown-name">{company.name}</span>
-                        <span className="company-dropdown-gst">GST: {company.gst}</span>
-                      </div>
-                      {selectedCompany === company.name && (
-                        <div className="company-dropdown-check">✓</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Right side cluster - navigation and logout */}
             <div className="dashboard-right-cluster">
@@ -158,67 +197,84 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
       </header>
 
       {/* Mobile Menu */}
-      <div className={`dashboard-mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
-        <div className="dashboard-mobile-content">
-          {/* Mobile Company Switcher */}
-          <div className="mobile-company-section">
-            <div className="mobile-company-dropdown-container">
-              <button 
-                onClick={toggleCompanyDropdown}
-                className="mobile-company-dropdown-button"
-              >
-                <Building className="mobile-company-dropdown-icon" />
-                <span className="mobile-company-dropdown-text">{selectedCompany}</span>
-                <ChevronDown className={`mobile-company-dropdown-chevron ${isCompanyDropdownOpen ? 'rotated' : ''}`} />
-              </button>
-              
-              {isCompanyDropdownOpen && (
-                <div className="mobile-company-dropdown">
-                  <div className="mobile-company-dropdown-header">
-                    <span>Select Company</span>
-                  </div>
-                  {userCompanies.map((company) => (
-                    <button
-                      key={company.id}
-                      onClick={() => handleCompanySelect(company)}
-                      className={`mobile-company-dropdown-item ${selectedCompany === company.name ? 'active' : ''}`}
+      {isMobileMenuOpen && (
+        <>
+          <div className="dashboard-mobile-menu">
+            <div className="dashboard-mobile-content">
+              {/* Mobile Company Switcher - only show if user has multiple companies */}
+              {hasMultipleCompanies && (
+                <div className="mobile-company-section">
+                  <div className="mobile-company-dropdown-container">
+                    <button 
+                      onClick={toggleCompanyDropdown}
+                      className="mobile-company-dropdown-button"
+                      disabled={loading}
                     >
-                      <div className="mobile-company-dropdown-info">
-                        <span className="mobile-company-dropdown-name">{company.name}</span>
-                        <span className="mobile-company-dropdown-gst">GST: {company.gst}</span>
-                      </div>
-                      {selectedCompany === company.name && (
-                        <div className="mobile-company-dropdown-check">✓</div>
-                      )}
+                      <Building className="mobile-company-dropdown-icon" />
+                      <span className="mobile-company-dropdown-text">{displayCompanyName}</span>
+                      <ChevronDown className={`mobile-company-dropdown-chevron ${isCompanyDropdownOpen ? 'rotated' : ''}`} />
                     </button>
-                  ))}
+                    {isCompanyDropdownOpen && (
+                      <div className="mobile-company-dropdown">
+                        <div className="mobile-company-dropdown-header">
+                          <span>Select Company</span>
+                        </div>
+                        {companies.map((company) => (
+                          <button
+                            key={company.id}
+                            onClick={() => handleCompanySelect(company)}
+                            className={`mobile-company-dropdown-item ${selectedCompany?.id === company.id ? 'active' : ''}`}
+                          >
+                            <div className="mobile-company-dropdown-info">
+                              <span className="mobile-company-dropdown-name">{company.name}</span>
+                              <span className="mobile-company-dropdown-gst">GST: {company.gst}</span>
+                            </div>
+                            {selectedCompany?.id === company.id && (
+                              <div className="mobile-company-dropdown-check">✓</div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
+              <div className="dashboard-mobile-divider" />
+              {navItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    navigate(item.path);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`dashboard-mobile-nav-button ${isActive(item.path) ? 'active' : ''} ${item.id === 'admin' ? 'admin-button' : ''}`}
+                >
+                  <item.icon className="dashboard-mobile-nav-icon" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+              <div className="dashboard-mobile-divider" />
+              <button onClick={handleLogout} className="dashboard-mobile-logout-button">
+                <LogOut className="dashboard-mobile-logout-icon" />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
-          
-          <div className="dashboard-mobile-divider" />
-          
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
-              className={`dashboard-mobile-nav-button ${isActive(item.path) ? 'active' : ''} ${item.id === 'admin' ? 'admin-button' : ''}`}
-            >
-              <item.icon className="dashboard-mobile-nav-icon" />
-              <span>{item.label}</span>
-            </button>
-          ))}
-          <div className="dashboard-mobile-divider" />
-          <button
-            onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
-            className="dashboard-mobile-logout-button"
-          >
-            <LogOut className="dashboard-mobile-logout-icon" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </div>
+          <div
+            className="dashboard-mobile-backdrop"
+            onClick={() => setIsMobileMenuOpen(false)}
+            style={{
+              position: 'fixed',
+              top: '4.5rem',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.3)',
+              zIndex: 9998
+            }}
+          />
+        </>
+      )}
     </>
   );
 };
