@@ -58,7 +58,7 @@ transporter.verify(function (error, success) {
 // Check if email exists in Pinecone database
 app.post("/api/check-email", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, phoneNumber } = req.body;
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -83,13 +83,12 @@ app.post("/api/check-email", async (req, res) => {
       includeMetadata: true,
     });
 
-
-
     if (queryResponse.matches && queryResponse.matches.length > 0) {
-      // Email found in database
+      // Email found in database - existing supplier
       const supplierData = queryResponse.matches[0].metadata;
       res.status(200).json({
         exists: true,
+        isSupplier: true,
         message: "Email found in database",
         supplierData: {
           sellerName: supplierData["Seller Name"],
@@ -102,17 +101,163 @@ app.post("/api/check-email", async (req, res) => {
         },
       });
     } else {
-      // Email not found in database
+      // Email not found in database - check if phone number is provided
+      if (!phoneNumber) {
+        return res.status(200).json({
+          exists: false,
+          requiresPhone: true,
+          message: "Phone number required to continue",
+        });
+      }
+
+      // Phone number provided, allow login as buyer
       res.status(200).json({
         exists: false,
-        message:
-          "Email is not registered, please register your business with WhatsApp",
+        isSupplier: false,
+        requiresPhone: false,
+        message: "Phone number provided, proceeding as buyer",
       });
     }
   } catch (error) {
     console.error("Error checking email in Pinecone:", error);
     res.status(500).json({
       error: "Failed to check email in database",
+      details: error.message,
+    });
+  }
+});
+
+// Add user as buyer to database
+app.post("/api/add-buyer", async (req, res) => {
+  try {
+    const { email, phoneNumber, displayName } = req.body;
+
+    if (!email || !phoneNumber) {
+      return res.status(400).json({ error: "Email and phone number are required" });
+    }
+
+    // Get the index with the correct namespace
+    const index = pinecone.index(
+      process.env.PINECONE_INDEX_NAME || "chemicals-new"
+    );
+
+    // Create a dummy vector with 1536 dimensions
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Create buyer record
+    const buyerId = `buyer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const buyerData = {
+      "Seller Name": displayName || "Buyer",
+      "Seller Email Address": email,
+      "Seller POC Contact Number": phoneNumber,
+      "Seller Verified": false,
+      "Seller Rating": 0,
+      "Region": "Unknown",
+      "Seller Address": "Not provided",
+      "User Type": "buyer", // Distinguish from suppliers
+      "Created At": new Date().toISOString(),
+    };
+
+    // Upsert the buyer record
+    await index.namespace("chemicals").upsert([{
+      id: buyerId,
+      values: dummyVector,
+      metadata: buyerData
+    }]);
+
+    console.log(`✅ Added buyer to database: ${email} with phone: ${phoneNumber}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Buyer added successfully",
+      buyerData: {
+        buyerId,
+        email,
+        phoneNumber,
+        displayName: displayName || "Buyer",
+        userType: "buyer"
+      }
+    });
+  } catch (error) {
+    console.error("Error adding buyer to database:", error);
+    res.status(500).json({
+      error: "Failed to add buyer to database",
+      details: error.message,
+    });
+  }
+});
+
+// Validate GST number using Fact-Byte API
+app.post("/api/validate-gst", async (req, res) => {
+  try {
+    const { gstin } = req.body;
+
+    if (!gstin) {
+      return res.status(400).json({ error: "GST number is required" });
+    }
+
+    // Validate GST format (15 characters, alphanumeric)
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstRegex.test(gstin)) {
+      return res.status(400).json({ 
+        error: "Invalid GST format", 
+        message: "GST number must be 15 characters in format: 22AAAAA0000A1Z5" 
+      });
+    }
+
+    // Call Fact-Byte API
+    const response = await fetch(`https://api.fact-byte.com/GST/GSTMasterInfo?gstin=${encodeURIComponent(gstin)}`, {
+      method: 'GET',
+      headers: {
+        'clientId': 'e2f3c308-f891-4b59-9f1e-c78b7f71c4d5',
+        'secreteKey': 'Bs9nDaNuyU9KJcyM4VXPnmM2-cjICkyaeIg9Ul6rFqU',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Fact-Byte API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Fact-Byte GST API response:', data);
+    
+    // Check if GST is valid based on API response
+    if (data && data.success && data.data) {
+      const gstData = data.data;
+      // Extract relevant fields
+      const sellerDetails = {
+        gstin: gstData.gstin || '',
+        legal_name: gstData.legal_name || '',
+        emailId: gstData.emailId || '',
+        mobileNumber: gstData.mobileNumber || '',
+        primary_business_address: (gstData.primary_business_address && gstData.primary_business_address.registered_address) ? gstData.primary_business_address.registered_address : '',
+        state_jurisdiction: gstData.state_jurisdiction || '',
+        current_registration_status: gstData.current_registration_status || '',
+        business_constitution: gstData.business_constitution || '',
+        aggregate_turn_over: gstData.aggregate_turn_over || '',
+        register_date: gstData.register_date || '',
+        register_cancellation_date: gstData.register_cancellation_date || ''
+      };
+      res.status(200).json({
+        success: true,
+        valid: true,
+        message: "GST number is valid",
+        sellerDetails
+      });
+    } else {
+      res.status(200).json({
+        success: true,
+        valid: false,
+        message: "GST number is invalid or not found",
+        sellerDetails: null
+      });
+    }
+  } catch (error) {
+    console.error("Error validating GST:", error);
+    res.status(500).json({
+      error: "Failed to validate GST",
       details: error.message,
     });
   }

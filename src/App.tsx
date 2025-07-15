@@ -30,6 +30,7 @@ import ContactPage from './pages/ContactPage';
 import CommunityPage from './pages/CommunityPage';
 import AboutPagePublic from './pages/AboutPagePublic';
 import { CompanyProvider } from './contexts/CompanyContext';
+import ProfileMockup from './pages/ProfileMockup';
 
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
@@ -75,8 +76,14 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
   // Handle auth success with React Router navigation
   const handleAuthSuccessWithNavigation = (userData) => {
     handleAuthSuccess(userData);
-    // Use React Router navigation instead of window.location.href
-    navigate('/dashboard/profile', { replace: true });
+    // Redirect based on user type
+    if (userData.isSupplier === false || userData.userType === 'buyer') {
+      // Buyer - redirect to ProfileMockup
+      navigate('/dashboard/profile-mockup', { replace: true });
+    } else {
+      // Supplier - redirect to regular profile
+      navigate('/dashboard/profile', { replace: true });
+    }
   };
 
   return (
@@ -91,6 +98,7 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
                 <Routes location={location} key={location.pathname}>
                   <Route path="/dashboard" element={<Dashboard user={user} onLogout={handleLogoutWithNavigation} />} />
                   <Route path="/dashboard/profile" element={<Profile user={user} />} />
+                  <Route path="/dashboard/profile-mockup" element={<ProfileMockup user={user} />} />
                   <Route path="/dashboard/about" element={<AboutPage user={user} />} />
                   <Route path="/dashboard/what-we-buy" element={<WhatWeBuy user={user} />} />
                   <Route path="/dashboard/what-we-sell" element={<WhatWeSell user={user} />} />
@@ -159,13 +167,38 @@ const App = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Check if user's email exists in Pinecone database
+        console.log('Auth state changed - user:', firebaseUser.email);
+        
+        // Fetch user profile from Firestore first
+        try {
+          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            console.log('Found user in Firestore:', userData);
+            
+            // If user has phoneNumber, they are a buyer
+            if (userData.phoneNumber) {
+              setUser({
+                ...userData,
+                isSupplier: false,
+                userType: 'buyer'
+              });
+              setIsAuthInitialized(true);
+              return;
+            }
+          }
+        } catch (err) {
+          console.log('Error fetching user from Firestore:', err);
+        }
+        
+        // Check if user's email exists in Pinecone database (only for suppliers)
         const emailCheckResult = await checkEmailInDatabase(firebaseUser.email || '');
+        console.log('Email check result in App.tsx:', emailCheckResult);
         
         if (!emailCheckResult.exists) {
-          // Email not found in database, sign out the user
-          console.log('User email not found in database, signing out...');
-          await signOut(auth);
+          // Email not found in database - don't sign out immediately
+          // Let the Login component handle the phone input flow
+          console.log('User email not found in database, but letting Login component handle it');
           setUser(null);
           setIsAuthInitialized(true);
           return;
@@ -179,7 +212,8 @@ const App = () => {
             // Include supplier data from Pinecone
             setUser({
               ...userData,
-              supplierData: emailCheckResult.supplierData || null
+              supplierData: emailCheckResult.supplierData || null,
+              isSupplier: emailCheckResult.isSupplier || true
             });
           } else {
             setUser({
@@ -187,7 +221,8 @@ const App = () => {
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
-              supplierData: emailCheckResult.supplierData || null
+              supplierData: emailCheckResult.supplierData || null,
+              isSupplier: emailCheckResult.isSupplier || true
             });
           }
         } catch (err) {
@@ -196,7 +231,8 @@ const App = () => {
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
-            supplierData: emailCheckResult.supplierData || null
+            supplierData: emailCheckResult.supplierData || null,
+            isSupplier: emailCheckResult.isSupplier || true
           });
         }
       } else {

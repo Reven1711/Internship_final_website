@@ -21,7 +21,7 @@ const DUMMY_GST = '22AAAAA0000A1Z5';
 
 const TABS = [
   { id: 'buy', label: 'Products You Buy', icon: ShoppingCart },
-  { id: 'sell', label: 'Products You Sell', icon: Package },
+  { id: 'sell', label: 'Register as a Supplier', icon: Package },
   { id: 'history', label: 'History', icon: History },
 ];
 
@@ -107,6 +107,17 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [updatingPincode, setUpdatingPincode] = useState(false);
   const [pincodeError, setPincodeError] = useState('');
   const [pincodeSuccess, setPincodeSuccess] = useState('');
+
+  // Supplier registration state
+  const [gstNumber, setGstNumber] = useState('');
+  const [sellerDetails, setSellerDetails] = useState<any>(null);
+  const [showSellerConfirmation, setShowSellerConfirmation] = useState(false);
+  const [editableEmail, setEditableEmail] = useState('');
+  const [editablePhone, setEditablePhone] = useState('');
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [verificationStep, setVerificationStep] = useState<'pending' | 'verifying' | 'success' | 'error'>('pending');
 
   // Quotation data state
   const [quotationData, setQuotationData] = useState<any[]>([]);
@@ -979,11 +990,71 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
+  // Supplier registration handlers
+  const handleGstSubmit = async () => {
+    if (!gstNumber.trim()) {
+      return;
+    }
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/validate-gst`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gstin: gstNumber }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to validate GST');
+      }
+      const data = await response.json();
+      if (data.success && data.valid && data.sellerDetails) {
+        setSellerDetails(data.sellerDetails);
+        setEditableEmail(data.sellerDetails.emailId || user?.email || '');
+        setEditablePhone(data.sellerDetails.mobileNumber || user?.phoneNumber || '');
+        setShowSellerConfirmation(true);
+      } else {
+        alert('Invalid GST number. Please check and try again.');
+      }
+    } catch (error) {
+      console.error('Error validating GST:', error);
+      alert('Failed to validate GST. Please try again.');
+    }
+  };
+
+  const handleSellerConfirmation = () => {
+    setShowVerificationModal(true);
+    setVerificationStep('pending');
+  };
+
+  const handleVerificationSubmit = async () => {
+    if (!emailOtp.trim() || !phoneOtp.trim()) {
+      return;
+    }
+    
+    setVerificationStep('verifying');
+    
+    // Mock verification - in real app this would call verification APIs
+    setTimeout(() => {
+      setVerificationStep('success');
+      setTimeout(() => {
+        setShowVerificationModal(false);
+        setShowSellerConfirmation(false);
+        setGstNumber('');
+        setSellerDetails(null);
+        setEditableEmail('');
+        setEditablePhone('');
+        setEmailOtp('');
+        setPhoneOtp('');
+        setVerificationStep('pending');
+      }, 2000);
+    }, 2000);
+  };
+
   // Use profileData if available, otherwise fall back to mock data
   const displayName = profileData?.["Seller Name"] || user?.displayName || mockProfile.fullName;
   const email = profileData?.["Seller Email Address"] || user?.email || mockProfile.gmail;
   const profilePhoto = user?.photoURL;
-  const userPhone = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+  const userPhone = user?.phoneNumber || profileData?.["Seller POC Contact Number"] || mockProfile.phone;
   const company = profileData?.["Seller Name"] || mockProfile.company;
   const gstValue = DUMMY_GST;
 
@@ -1001,9 +1072,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               />
             </div>
             <h2 className="profile-name">{displayName}</h2>
-            <p className="profile-company">{company}</p>
           </div>
-          
           <div className="profile-info">
             <div className="info-item">
               <Mail className="info-icon" />
@@ -1012,63 +1081,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <span className="info-value">{email}</span>
               </div>
             </div>
-            <div className="info-item">
-              <Building2 className="info-icon" />
-              <div>
-                <span className="info-label">COMPANY</span>
-                <span className="info-value">{company}</span>
-              </div>
-            </div>
-            <div className="info-item">
-              <CreditCard className="info-icon" />
-              <div>
-                <span className="info-label">GST NUMBER</span>
-                <span className="info-value">{gstValue}</span>
-              </div>
-            </div>
-            
-            <div className="info-item">
-              <MapPin className="info-icon" />
-              <div style={{width: '100%'}}>
-                <span className="info-label">ADDRESS</span>
-                <div className="profile-edit-row">
-                  <span className="info-value">{profileData?.["Seller Address"] || mockProfile.address}</span>
-                </div>
-              </div>
-            </div>
-            <div className="info-item">
-              <Pin className="info-icon" />
-              <div style={{width: '100%'}}>
-                <span className="info-label">PIN CODE</span>
-                <div className="profile-edit-row">
-                  <span className="info-value">{profileData?.["PIN Code"] || mockProfile.pin}</span>
-                  <button 
-                    onClick={handleEditPincode}
-                    className="edit-button"
-                    title="Edit PIN Code"
-                  >
-                    <Edit size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Only show phone number if it exists */}
             {userPhone && (
               <div className="info-item">
                 <Phone className="info-icon" />
                 <div>
                   <span className="info-label">PHONE</span>
-                  <div className="profile-edit-row">
-                    <span className="info-value">{userPhone}</span>
-                    <button 
-                      onClick={handleEditProfile}
-                      className="edit-button"
-                      title="Edit Phone Number"
-                    >
-                      <Edit size={14} />
-                    </button>
-                  </div>
+                  <span className="info-value">{userPhone}</span>
                 </div>
               </div>
             )}
@@ -1175,122 +1193,175 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           )}
           
           {tab === 'sell' && (
-            <div className="sell-content">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <input
-                  className="product-search-input"
-                  type="text"
-                  placeholder="Search products you sell..."
-                  value={searchSell}
-                  onChange={e => setSearchSell(e.target.value)}
-                  style={{ width: '70%' }}
-                />
-                <button 
-                  className="add-product-btn"
-                  onClick={() => {
-                    setShowAddSellModal(true);
-                    setSellProductSuccess('');
-                    setSellProductError('');
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 20px',
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    transition: 'background-color 0.2s'
-                  }}
-                >
-                  <Plus size={16} />
-                  Add Product
-                </button>
-              </div>
+            <div className="supplier-registration-content">
+              <h2 className="section-title">Register as a Supplier</h2>
               
-              <h2 className="section-title">Products You Sell</h2>
-              
-              {companyLoading || sellLoading ? (
-                <div className="loading-state">
-                  <p>{companyLoading ? 'Loading company data...' : 'Loading your products...'}</p>
-                </div>
-              ) : sellProducts.length === 0 ? (
-                <div className="empty-state">
-                  <p>No products found for your account.</p>
-                  <p>Products you add to the system will appear here.</p>
+              {!showSellerConfirmation ? (
+                <div className="gst-form-section">
+                  <div style={{
+                    background: 'white',
+                    borderRadius: '12px',
+                    padding: '32px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    maxWidth: '600px',
+                    margin: '0 auto'
+                  }}>
+                    <div style={{
+                      textAlign: 'center',
+                      marginBottom: '32px'
+                    }}>
+                      <div style={{
+                        width: '64px',
+                        height: '64px',
+                        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px auto'
+                      }}>
+                        <Building2 size={32} color="white" />
+                      </div>
+                      <h3 style={{
+                        fontSize: '24px',
+                        fontWeight: '600',
+                        color: '#1e293b',
+                        margin: '0 0 8px 0'
+                      }}>
+                        Become a Supplier
+                      </h3>
+                      <p style={{
+                        color: '#64748b',
+                        fontSize: '16px',
+                        margin: '0'
+                      }}>
+                        Enter your GST number to get started with supplier registration
+                      </p>
+                    </div>
+                    
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: '8px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        fontSize: '14px'
+                      }}>
+                        GST Number *
+                      </label>
+                      <input
+                        type="text"
+                        value={gstNumber}
+                        onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                        placeholder="Enter 15-digit GST number (e.g., 22AAAAA0000A1Z5)"
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '16px',
+                          outline: 'none',
+                          transition: 'border-color 0.2s',
+                          boxSizing: 'border-box'
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        maxLength={15}
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={handleGstSubmit}
+                      disabled={!gstNumber.trim() || gstNumber.length !== 15}
+                      style={{
+                        width: '100%',
+                        padding: '14px 24px',
+                        backgroundColor: gstNumber.trim() && gstNumber.length === 15 ? '#2563eb' : '#9ca3af',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: gstNumber.trim() && gstNumber.length === 15 ? 'pointer' : 'not-allowed',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseOver={(e) => {
+                        if (gstNumber.trim() && gstNumber.length === 15) {
+                          e.currentTarget.style.backgroundColor = '#1d4ed8';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (gstNumber.trim() && gstNumber.length === 15) {
+                          e.currentTarget.style.backgroundColor = '#2563eb';
+                        }
+                      }}
+                    >
+                      Lookup GST Details
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="sell-grid">
-                  {sellProducts
-                    .filter(product => product.productName.toLowerCase().includes(searchSell.toLowerCase()))
-                    .map((product, i, arr) => {
-                      // 3 columns per row
-                      const columns = 3;
-                      const expandedRow = expandedSellIdx !== null ? Math.floor(expandedSellIdx / columns) : null;
-                      const thisRow = Math.floor(i / columns);
-                      const isRowExpanded = expandedRow !== null && thisRow === expandedRow;
-                      return (
-                        <div
-                          key={i}
-                          className={`sell-item-card${isRowExpanded ? ' expanded' : ''}`}
-                          style={{ cursor: 'pointer', marginBottom: 16, border: '1px solid #eee', borderRadius: 8, boxShadow: isRowExpanded ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', transition: 'box-shadow 0.2s' }}
-                        >
-                          <div 
-                            style={{ display: 'flex', alignItems: 'center', padding: 16 }}
-                            onClick={() => setExpandedSellIdx(isRowExpanded ? null : i)}
-                          >
-                            <Package className="buy-icon" />
-                            <span style={{ flex: 1, marginLeft: 12, fontWeight: 600 }}>{product.productName}</span>
-                            {isRowExpanded ? (
-                              <ChevronUp size={20} style={{ color: '#3A8DCA' }} className="chevron-icon" />
-                            ) : (
-                              <ChevronDown size={20} style={{ color: '#3A8DCA' }} className="chevron-icon" />
-                            )}
-                          </div>
-                          {isRowExpanded && (
-                            <div 
-                              style={{ padding: 16, borderTop: '1px solid #eee', background: '#fafbfc' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="product-header">
-                                <h3 className="product-name">{product.productName}</h3>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  <button className="edit-btn" onClick={() => handleEditSellProduct(product)}>
-                                    <Edit size={16} />
-                                  </button>
-                                  <button 
-                                    className="edit-btn" 
-                                    onClick={() => {
-                                      setShowDeleteSellModal(true);
-                                      setSellProductToDelete(product.productId); // Always use Pinecone record ID
-                                    }}
-                                    disabled={deletingSellProduct === product.productId}
-                                  >
-                                    {deletingSellProduct === product.productId ? (
-                                      <span style={{ fontSize: '12px' }}>...</span>
-                                    ) : (
-                                      <X size={16} />
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-                              <p className="product-category">{product.productCategory}</p>
-                              <p className="product-description">{product.productDescription}</p>
-                              <div className="product-details">
-                                <div className="detail-item">
-                                  <Package size={16} />
-                                  <span>MOQ: {product.minimumOrderQuantity} {product.productUnit}</span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                <div style={{
+                  background: '#f9fafb',
+                  borderRadius: '16px',
+                  padding: '32px',
+                  marginBottom: '24px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                }}>
+                  <h2 style={{
+                    fontSize: '24px',
+                    fontWeight: '700',
+                    color: '#1e293b',
+                    marginBottom: '24px',
+                    textAlign: 'center'
+                  }}>
+                    Please confirm the following seller details:
+                  </h2>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '32px',
+                    background: '#f1f5f9',
+                    borderRadius: '12px',
+                    padding: '32px',
+                    marginBottom: '24px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Seller Name</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.legal_name || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>State</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.state_jurisdiction || '-'}</div>
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Seller Address</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.primary_business_address || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>PIN Code</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{(() => {
+                        const addr = sellerDetails.primary_business_address || '';
+                        const match = addr.match(/(\d{6})\b/);
+                        return match ? match[1] : '-';
+                      })()}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Product Address</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.primary_business_address || '-'}</div>
+                    </div>
+                  </div>
+                  {/* Optionally, add more fields below in a details section */}
+                  <div style={{ marginTop: '16px' }}>
+                    <div><strong>GSTIN:</strong> {sellerDetails.gstin || '-'}</div>
+                    <div><strong>Email:</strong> {sellerDetails.emailId || '-'}</div>
+                    <div><strong>Phone:</strong> {sellerDetails.mobileNumber || '-'}</div>
+                    <div><strong>Registration Status:</strong> {sellerDetails.current_registration_status || '-'}</div>
+                    <div><strong>Business Constitution:</strong> {sellerDetails.business_constitution || '-'}</div>
+                    <div><strong>Turnover:</strong> {sellerDetails.aggregate_turn_over || '-'}</div>
+                    <div><strong>Registration Date:</strong> {sellerDetails.register_date || '-'}</div>
+                    <div><strong>Cancellation Date:</strong> {sellerDetails.register_cancellation_date || '-'}</div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1392,47 +1463,47 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                     />
                     <div className="date-range-row">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
-                      <input
-                        type="date"
-                        value={inquiryStartDate}
-                        onChange={(e) => setInquiryStartDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
-                      <input
-                        type="date"
-                        value={inquiryEndDate}
-                        onChange={(e) => setInquiryEndDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
+                        <input
+                          type="date"
+                          value={inquiryStartDate}
+                          onChange={(e) => setInquiryStartDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
+                        <input
+                          type="date"
+                          value={inquiryEndDate}
+                          onChange={(e) => setInquiryEndDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
                       </div>
                     </div>
                   </>
@@ -1461,47 +1532,47 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                     />
                     <div className="date-range-row">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
-                      <input
-                        type="date"
-                        value={quotationStartDate}
-                        onChange={(e) => setQuotationStartDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
-                      <input
-                        type="date"
-                        value={quotationEndDate}
-                        onChange={(e) => setQuotationEndDate(e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          width: '120px',
-                          outline: 'none',
-                          transition: 'border-color 0.2s ease',
-                          height: '32px',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
+                        <input
+                          type="date"
+                          value={quotationStartDate}
+                          onChange={(e) => setQuotationStartDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
+                        <input
+                          type="date"
+                          value={quotationEndDate}
+                          onChange={(e) => setQuotationEndDate(e.target.value)}
+                          style={{
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            width: '120px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s ease',
+                            height: '32px',
+                            boxSizing: 'border-box',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
                       </div>
                     </div>
                   </>
@@ -2703,6 +2774,210 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Verification Modal */}
+      {showVerificationModal && (
+        <div className="modal-overlay" onClick={() => setShowVerificationModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Verify Contact Information</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowVerificationModal(false)}
+                disabled={verificationStep === 'verifying'}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {verificationStep === 'success' ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <div style={{ fontSize: '48px', color: '#10b981', marginBottom: '16px' }}>✓</div>
+                  <h3 style={{ color: '#10b981', marginBottom: '8px' }}>Verification Successful!</h3>
+                  <p style={{ color: '#6b7280', marginBottom: '20px' }}>Your contact information has been verified successfully.</p>
+                </div>
+              ) : verificationStep === 'error' ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <div style={{ fontSize: '48px', color: '#ef4444', marginBottom: '16px' }}>✗</div>
+                  <h3 style={{ color: '#ef4444', marginBottom: '8px' }}>Verification Failed</h3>
+                  <p style={{ color: '#6b7280', marginBottom: '20px' }}>Please check your OTP codes and try again.</p>
+                </div>
+              ) : (
+                <>
+                  <p style={{ marginBottom: '24px', color: '#6b7280', textAlign: 'center' }}>
+                    We've sent verification codes to your email and phone number. Please enter them below.
+                  </p>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      fontSize: '14px'
+                    }}>
+                      Email OTP (sent to {editableEmail})
+                    </label>
+                    <input
+                      type="text"
+                      value={emailOtp}
+                      onChange={(e) => setEmailOtp(e.target.value)}
+                      placeholder="Enter 6-digit email OTP"
+                      maxLength={6}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                        boxSizing: 'border-box'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      disabled={verificationStep === 'verifying'}
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '24px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      fontSize: '14px'
+                    }}>
+                      Phone OTP (sent to {editablePhone})
+                    </label>
+                    <input
+                      type="text"
+                      value={phoneOtp}
+                      onChange={(e) => setPhoneOtp(e.target.value)}
+                      placeholder="Enter 6-digit phone OTP"
+                      maxLength={6}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                        boxSizing: 'border-box'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      disabled={verificationStep === 'verifying'}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              {verificationStep === 'success' ? (
+                <button 
+                  className="modal-submit-btn"
+                  onClick={() => setShowVerificationModal(false)}
+                  style={{ width: '100%' }}
+                >
+                  Continue
+                </button>
+              ) : verificationStep === 'error' ? (
+                <button 
+                  className="modal-submit-btn"
+                  onClick={() => setVerificationStep('pending')}
+                  style={{ width: '100%' }}
+                >
+                  Try Again
+                </button>
+              ) : (
+                <>
+                  <button 
+                    className="modal-cancel-btn"
+                    onClick={() => setShowVerificationModal(false)}
+                    disabled={verificationStep === 'verifying'}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="modal-submit-btn"
+                    onClick={handleVerificationSubmit}
+                    disabled={!emailOtp.trim() || !phoneOtp.trim() || verificationStep === 'verifying'}
+                  >
+                    {verificationStep === 'verifying' ? 'Verifying...' : 'Verify & Submit'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSellerConfirmation && sellerDetails && (
+        <div style={{
+          background: '#f9fafb',
+          borderRadius: '16px',
+          padding: '32px',
+          marginBottom: '24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '24px',
+            textAlign: 'center'
+          }}>
+            Please confirm the following seller details:
+          </h2>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '32px',
+            background: '#f1f5f9',
+            borderRadius: '12px',
+            padding: '32px',
+            marginBottom: '24px'
+          }}>
+            <div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Seller Name</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.legal_name || '-'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>State</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.state_jurisdiction || '-'}</div>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Seller Address</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.primary_business_address || '-'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>PIN Code</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{(() => {
+                const addr = sellerDetails.primary_business_address || '';
+                const match = addr.match(/(\d{6})\b/);
+                return match ? match[1] : '-';
+              })()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Product Address</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.primary_business_address || '-'}</div>
+            </div>
+          </div>
+          {/* Optionally, add more fields below in a details section */}
+          <div style={{ marginTop: '16px' }}>
+            <div><strong>GSTIN:</strong> {sellerDetails.gstin || '-'}</div>
+            <div><strong>Email:</strong> {sellerDetails.emailId || '-'}</div>
+            <div><strong>Phone:</strong> {sellerDetails.mobileNumber || '-'}</div>
+            <div><strong>Registration Status:</strong> {sellerDetails.current_registration_status || '-'}</div>
+            <div><strong>Business Constitution:</strong> {sellerDetails.business_constitution || '-'}</div>
+            <div><strong>Turnover:</strong> {sellerDetails.aggregate_turn_over || '-'}</div>
+            <div><strong>Registration Date:</strong> {sellerDetails.register_date || '-'}</div>
+            <div><strong>Cancellation Date:</strong> {sellerDetails.register_cancellation_date || '-'}</div>
           </div>
         </div>
       )}

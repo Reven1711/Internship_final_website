@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import './Login.css';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { signInWithPopup, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import RegistrationMessage from './RegistrationMessage';
 
 interface LoginModalProps {
@@ -15,7 +15,9 @@ interface LoginModalProps {
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [showRegistrationMessage, setShowRegistrationMessage] = useState(false);
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [tempUserData, setTempUserData] = useState(null);
 
@@ -25,7 +27,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
       // Reset states when modal opens
       setShowSuccessMessage(false);
       setShowRegistrationMessage(false);
+      setShowPhoneInput(false);
       setUserEmail('');
+      setPhoneNumber('');
       setLoading(false);
       setTempUserData(null);
       
@@ -44,14 +48,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
   }, [showSuccessMessage]);
 
   // Function to check if email exists in Pinecone database
-  const checkEmailInDatabase = async (email: string) => {
+  const checkEmailInDatabase = async (email: string, phoneNumber?: string) => {
     try {
+      console.log('Checking email in database:', email, 'phoneNumber:', phoneNumber);
+      
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/check-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, phoneNumber }),
       });
 
       if (!response.ok) {
@@ -59,11 +65,35 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
       }
 
       const data = await response.json();
+      console.log('API response:', data);
       return data;
     } catch (error) {
       console.error('Error checking email in database:', error);
       // If there's an error checking the database, don't allow login
       return { exists: false, message: 'Database check failed, please try again later' };
+    }
+  };
+
+  // Function to add user as buyer
+  const addUserAsBuyer = async (email: string, phoneNumber: string, displayName: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/add-buyer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, phoneNumber, displayName }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add user as buyer');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error adding user as buyer:', error);
+      throw error;
     }
   };
 
@@ -76,27 +106,63 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
       
       console.log('Google sign-in successful, checking email in database...');
       
-      // Check if email exists in Pinecone database
-      const emailCheckResult = await checkEmailInDatabase(user.email || '');
-      
-      if (!emailCheckResult.exists) {
-        // Email not found in database, sign out the user and show registration message
-        await signOut(auth);
-        setUserEmail(user.email || '');
-        setShowRegistrationMessage(true);
-        setLoading(false);
-        // Don't proceed with login - user must register first
-        return;
+      // First, check if user already exists in Firestore with phone number
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.phoneNumber) {
+            // User is already a buyer
+            console.log('User is already a buyer with phone number');
+            const buyerData = {
+              ...userData,
+              isSupplier: false,
+              userType: 'buyer'
+            };
+            setShowSuccessMessage(true);
+            setTempUserData(buyerData);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.log('Error checking Firestore:', err);
       }
       
-      // Email found in database, proceed with normal login
+      // Check if email exists in Pinecone database (suppliers)
+      const emailCheckResult = await checkEmailInDatabase(user.email || '');
+      
+      console.log('Email check result:', emailCheckResult);
+      
+      if (!emailCheckResult.exists) {
+        console.log('Email not found, checking requiresPhone:', emailCheckResult.requiresPhone);
+        if (emailCheckResult.requiresPhone) {
+          // Email not found and phone number required
+          console.log('Showing phone input form');
+          setUserEmail(user.email || '');
+          setShowPhoneInput(true);
+          setLoading(false);
+          return;
+        } else {
+          // Email not found in database, sign out the user and show registration message
+          console.log('Showing registration message');
+          await signOut(auth);
+          setUserEmail(user.email || '');
+          setShowRegistrationMessage(true);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Email found in database, proceed with normal login (supplier)
       const userData = { 
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
         createdAt: new Date().toISOString(),
-        supplierData: emailCheckResult.supplierData || null
+        supplierData: emailCheckResult.supplierData || null,
+        isSupplier: emailCheckResult.isSupplier || true
       };
       
       console.log('User data to save:', userData);
@@ -129,6 +195,62 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
       }
       
       alert(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle phone number submission
+  const handlePhoneSubmit = async () => {
+    if (!phoneNumber.trim()) {
+      alert('Please enter your phone number');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Check email again with phone number
+      const emailCheckResult = await checkEmailInDatabase(userEmail, phoneNumber);
+      
+      if (emailCheckResult.exists) {
+        // This shouldn't happen, but handle it gracefully
+        alert('Email already exists in database');
+        setShowPhoneInput(false);
+        setLoading(false);
+        return;
+      }
+
+      // Add user as buyer
+      const buyerResult = await addUserAsBuyer(userEmail, phoneNumber, 'Buyer');
+      
+      // Get current Firebase user
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('No authenticated user found');
+      }
+
+      // Create user data for buyer
+      const userData = { 
+        uid: currentUser.uid,
+        email: userEmail,
+        displayName: currentUser.displayName || 'Buyer',
+        photoURL: currentUser.photoURL,
+        createdAt: new Date().toISOString(),
+        phoneNumber: phoneNumber,
+        isSupplier: false,
+        userType: 'buyer'
+      };
+      
+      console.log('Buyer data to save:', userData);
+      
+      await setDoc(doc(db, 'users', currentUser.uid), userData, { merge: true });
+      
+      // Show success message
+      setShowSuccessMessage(true);
+      setTempUserData(userData);
+    } catch (error: any) {
+      console.error('Error adding user as buyer:', error);
+      alert('Failed to register as buyer. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -173,6 +295,45 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
                 <button onClick={handleCloseSuccessMessage} className="success-close-button">
                   Continue
                 </button>
+              </div>
+            ) : showPhoneInput ? (
+              <div className="phone-input-form">
+                <div className="form-group">
+                  <label className="form-label">Phone Number Required</label>
+                  <p className="form-description">
+                    Please provide your phone number to continue as a buyer.
+                  </p>
+                  <div className="input-group">
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="Enter your phone number"
+                      className="phone-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div className="button-group">
+                  <button 
+                    onClick={handlePhoneSubmit} 
+                    className="submit-button" 
+                    disabled={loading || !phoneNumber.trim()}
+                  >
+                    {loading ? 'Processing...' : 'Continue'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowPhoneInput(false);
+                      setPhoneNumber('');
+                      signOut(auth);
+                    }} 
+                    className="cancel-button"
+                    disabled={loading}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="login-form">
