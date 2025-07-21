@@ -31,6 +31,7 @@ import CommunityPage from './pages/CommunityPage';
 import AboutPagePublic from './pages/AboutPagePublic';
 import { CompanyProvider } from './contexts/CompanyContext';
 import ProfileMockup from './pages/ProfileMockup';
+import { Toaster } from './components/ui/toaster';
 
 // Function to check if email exists in Pinecone database
 const checkEmailInDatabase = async (email: string) => {
@@ -77,14 +78,45 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
   const handleAuthSuccessWithNavigation = (userData) => {
     handleAuthSuccess(userData);
     // Redirect based on user type
-    if (userData.isSupplier === false || userData.userType === 'buyer') {
-      // Buyer - redirect to ProfileMockup
-      navigate('/dashboard/profile-mockup', { replace: true });
+    if (userData.userType === 'buyer' || userData.isSupplier === false) {
+      // Buyer - redirect to buyer profile
+      navigate('/dashboard/buyer', { replace: true });
     } else {
       // Supplier - redirect to regular profile
       navigate('/dashboard/profile', { replace: true });
     }
   };
+
+  // Check if user has access to current route
+  const hasRouteAccess = (pathname) => {
+    if (!user) return true; // Public routes
+    
+    const isSupplier = user.userType === 'supplier' || user.isSupplier === true;
+    const isBuyer = user.userType === 'buyer' || user.isSupplier === false;
+    
+    // Supplier-only routes
+    if (pathname === '/dashboard/profile' && !isSupplier) {
+      return false;
+    }
+    
+    // Buyer-only routes
+    if (pathname === '/dashboard/buyer' && !isBuyer) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Redirect if user doesn't have access to current route
+  useEffect(() => {
+    if (user && !hasRouteAccess(location.pathname)) {
+      if (user.userType === 'buyer' || user.isSupplier === false) {
+        navigate('/dashboard/buyer', { replace: true });
+      } else {
+        navigate('/dashboard/profile', { replace: true });
+      }
+    }
+  }, [user, location.pathname, navigate]);
 
   return (
     <>
@@ -97,8 +129,22 @@ const AppContent = ({ user, onLoginClick, onLogout, handleAuthSuccess, isLoginMo
               <AnimatePresence mode="wait">
                 <Routes location={location} key={location.pathname}>
                   <Route path="/dashboard" element={<Dashboard user={user} onLogout={handleLogoutWithNavigation} />} />
+                  
+                  {/* Supplier-only routes */}
+                  {user.userType === 'supplier' || user.isSupplier === true ? (
                   <Route path="/dashboard/profile" element={<Profile user={user} />} />
-                  <Route path="/dashboard/profile-mockup" element={<ProfileMockup user={user} />} />
+                  ) : (
+                    <Route path="/dashboard/profile" element={<Navigate to="/dashboard/buyer" replace />} />
+                  )}
+                  
+                  {/* Buyer-only routes */}
+                  {user.userType === 'buyer' || user.isSupplier === false ? (
+                  <Route path="/dashboard/buyer" element={<ProfileMockup user={user} />} />
+                  ) : (
+                    <Route path="/dashboard/buyer" element={<Navigate to="/dashboard/profile" replace />} />
+                  )}
+                  
+                  {/* Common routes for both user types */}
                   <Route path="/dashboard/about" element={<AboutPage user={user} />} />
                   <Route path="/dashboard/what-we-buy" element={<WhatWeBuy user={user} />} />
                   <Route path="/dashboard/what-we-sell" element={<WhatWeSell user={user} />} />
@@ -169,36 +215,13 @@ const App = () => {
       if (firebaseUser) {
         console.log('Auth state changed - user:', firebaseUser.email);
         
-        // Fetch user profile from Firestore first
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            console.log('Found user in Firestore:', userData);
-            
-            // If user has phoneNumber, they are a buyer
-            if (userData.phoneNumber) {
-              setUser({
-                ...userData,
-                isSupplier: false,
-                userType: 'buyer'
-              });
-              setIsAuthInitialized(true);
-              return;
-            }
-          }
-        } catch (err) {
-          console.log('Error fetching user from Firestore:', err);
-        }
-        
-        // Check if user's email exists in Pinecone database (only for suppliers)
+        // Check if user's email exists in either supplier or buyer database
         const emailCheckResult = await checkEmailInDatabase(firebaseUser.email || '');
         console.log('Email check result in App.tsx:', emailCheckResult);
         
         if (!emailCheckResult.exists) {
-          // Email not found in database - don't sign out immediately
-          // Let the Login component handle the phone input flow
-          console.log('User email not found in database, but letting Login component handle it');
+          // Email not found in either database - user needs to register
+          console.log('User email not found in any database, needs registration');
           setUser(null);
           setIsAuthInitialized(true);
           return;
@@ -209,31 +232,70 @@ const App = () => {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            // Include supplier data from Pinecone
+            // Include data from Pinecone based on user type
+            if (emailCheckResult.userType === 'supplier') {
             setUser({
               ...userData,
               supplierData: emailCheckResult.supplierData || null,
-              isSupplier: emailCheckResult.isSupplier || true
+                isSupplier: true,
+                userType: 'supplier'
+              });
+            } else {
+              setUser({
+                ...userData,
+                buyerData: emailCheckResult.buyerData || null,
+                isSupplier: false,
+                userType: 'buyer'
             });
+            }
           } else {
+            // Create new user data based on type
+            if (emailCheckResult.userType === 'supplier') {
+              setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                supplierData: emailCheckResult.supplierData || null,
+                isSupplier: true,
+                userType: 'supplier'
+              });
+            } else {
+              setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                buyerData: emailCheckResult.buyerData || null,
+                isSupplier: false,
+                userType: 'buyer'
+              });
+            }
+          }
+        } catch (err) {
+          console.log('Error fetching user from Firestore:', err);
+          // Fallback user data
+          if (emailCheckResult.userType === 'supplier') {
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               supplierData: emailCheckResult.supplierData || null,
-              isSupplier: emailCheckResult.isSupplier || true
+              isSupplier: true,
+              userType: 'supplier'
             });
-          }
-        } catch (err) {
+          } else {
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
-            supplierData: emailCheckResult.supplierData || null,
-            isSupplier: emailCheckResult.isSupplier || true
+              buyerData: emailCheckResult.buyerData || null,
+              isSupplier: false,
+              userType: 'buyer'
           });
+          }
         }
       } else {
         setUser(null);
@@ -264,7 +326,7 @@ const App = () => {
 
   const handleAuthSuccess = (userData) => {
     setUser(userData);
-    setIsLoginModalOpen(false);
+    // setIsLoginModalOpen(false); // REMOVE THIS LINE to allow modal to close itself after showing success message
   };
 
   // Show loading state while auth is initializing
@@ -293,6 +355,7 @@ const App = () => {
           />
         </div>
       </CompanyProvider>
+      <Toaster />
       {/* Loader overlays only on mobile while loading */}
       {isMobile && isLoading && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#fff' }}>

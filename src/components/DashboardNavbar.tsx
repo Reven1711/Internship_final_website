@@ -31,7 +31,12 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ user, onLogout }) => 
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/dashboard' },
-    { id: 'profile', label: 'Profile', icon: User, path: '/dashboard/profile' }
+    // Show different profile links based on user type
+    ...(user?.userType === 'buyer' || user?.isSupplier === false ? [
+      { id: 'profile', label: 'Profile', icon: User, path: '/dashboard/buyer' }
+    ] : [
+      { id: 'profile', label: 'Profile', icon: User, path: '/dashboard/profile' }
+    ])
   ];
 
   // Add admin item if user is admin

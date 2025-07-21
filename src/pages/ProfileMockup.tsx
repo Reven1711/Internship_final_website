@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Package, History, Mail, Building, CreditCard, MapPin, Phone, Pin, Building2, Edit, ChevronDown, ChevronUp, Plus, X, FileText, Download, Share2, IndianRupee } from 'lucide-react';
-import './Profile.css';
+import './ProfileMockup.css';
 import Popup from '../components/ui/Popup';
 import { useNavigate } from 'react-router-dom';
 import { useCompany } from '../contexts/CompanyContext';
+import { useToast } from '../hooks/use-toast';
 
 const mockProfile = {
   profilePic: 'https://www.gstatic.com/images/branding/product/2x/avatar_square_blue_512dp.png',
@@ -22,7 +23,7 @@ const DUMMY_GST = '22AAAAA0000A1Z5';
 const TABS = [
   { id: 'buy', label: 'Products You Buy', icon: ShoppingCart },
   { id: 'sell', label: 'Register as a Supplier', icon: Package },
-  { id: 'history', label: 'History', icon: History },
+  { id: 'history', label: 'Your Inquiries', icon: History },
 ];
 
 interface ProfileProps {
@@ -82,21 +83,17 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [updatingProduct, setUpdatingProduct] = useState(false);
 
   // History section state
-  const [historyTab, setHistoryTab] = useState<'inquiry' | 'quotation'>('inquiry');
+  const [historyTab, setHistoryTab] = useState<'inquiry'>('inquiry');
 
   // Search state for history sections
   const [inquirySearch, setInquirySearch] = useState('');
-  const [quotationSearch, setQuotationSearch] = useState('');
   
   // Date filter state for history sections
   const [inquiryDateFilter, setInquiryDateFilter] = useState('');
-  const [quotationDateFilter, setQuotationDateFilter] = useState('');
   
   // Date range filter state for history sections
   const [inquiryStartDate, setInquiryStartDate] = useState('');
   const [inquiryEndDate, setInquiryEndDate] = useState('');
-  const [quotationStartDate, setQuotationStartDate] = useState('');
-  const [quotationEndDate, setQuotationEndDate] = useState('');
 
   // Edit profile popup state
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
@@ -114,14 +111,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [showSellerConfirmation, setShowSellerConfirmation] = useState(false);
   const [editableEmail, setEditableEmail] = useState('');
   const [editablePhone, setEditablePhone] = useState('');
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [emailOtp, setEmailOtp] = useState('');
-  const [phoneOtp, setPhoneOtp] = useState('');
-  const [verificationStep, setVerificationStep] = useState<'pending' | 'verifying' | 'success' | 'error'>('pending');
 
-  // Quotation data state
-  const [quotationData, setQuotationData] = useState<any[]>([]);
-  const [quotationLoading, setQuotationLoading] = useState(false);
 
   // Inquiry data state
   const [inquiryData, setInquiryData] = useState<any[]>([]);
@@ -129,8 +119,66 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   const [masterProductList, setMasterProductList] = useState<string[]>([]);
 
+  // Cache for buy products to avoid unnecessary API calls
+  const [buyProductsCache, setBuyProductsCache] = useState<{[key: string]: string[]}>({});
+  const [cacheInitialized, setCacheInitialized] = useState(false);
+
   // Use company context
   const { selectedCompany, loading: companyLoading } = useCompany();
+  
+  // Use toast for notifications
+  const { toast } = useToast();
+
+  // Clear cache when user changes
+  useEffect(() => {
+    if (user?.email) {
+      console.log('👤 User changed, clearing cache');
+      setBuyProductsCache({});
+      setCacheInitialized(false);
+    }
+  }, [user?.email]);
+
+  // Generate cache key based on user and company
+  const getCacheKey = () => {
+    if (!user?.email) return null;
+    const baseKey = user.email;
+    if (selectedCompany) {
+      return `${baseKey}_${selectedCompany.contact}_${selectedCompany.name}`;
+    }
+    return baseKey;
+  };
+
+  // Get cached products or fetch from API
+  const getBuyProducts = () => {
+    const cacheKey = getCacheKey();
+    if (!cacheKey) return [];
+    
+    if (buyProductsCache[cacheKey]) {
+      console.log('📦 Using cached buy products:', buyProductsCache[cacheKey]);
+      return buyProductsCache[cacheKey];
+    }
+    
+    return [];
+  };
+
+  // Update cache with new products
+  const updateBuyProductsCache = (products: string[]) => {
+    const cacheKey = getCacheKey();
+    if (!cacheKey) return;
+    
+    console.log('🔄 Updating buy products cache:', products);
+    setBuyProductsCache(prev => ({
+      ...prev,
+      [cacheKey]: products
+    }));
+    setBuyProducts(products);
+  };
+
+  // Force refresh cache from backend (for consistency)
+  const forceRefreshCache = async () => {
+    console.log('🔄 Force refreshing cache from backend');
+    await fetchBuyProducts(true);
+  };
 
   // Fetch master product list
   useEffect(() => {
@@ -196,9 +244,19 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     return name.trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
-  // Fetch user's buy products from Pinecone
-  const fetchBuyProducts = async () => {
+  // Fetch user's buy products from Pinecone (always fetch fresh data)
+  const fetchBuyProducts = async (forceRefresh = false) => {
     if (!user?.email) return;
+
+    const cacheKey = getCacheKey();
+    if (!cacheKey) return;
+
+    // Only use cache for tab switches, never for initial load or company changes
+    if (!forceRefresh && buyProductsCache[cacheKey] && cacheInitialized) {
+      console.log('📦 Using cached buy products for tab switch');
+      setBuyProducts(buyProductsCache[cacheKey]);
+      return;
+    }
 
     try {
       setBuyLoading(true);
@@ -223,14 +281,16 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       if (response.ok) {
         console.log('✅ Buy products fetched successfully:', data.products);
-        setBuyProducts(data.products || []);
+        const products = data.products || [];
+        updateBuyProductsCache(products);
+        setCacheInitialized(true);
       } else {
         console.error('❌ Error fetching buy products:', data.error);
-        setBuyProducts([]);
+        updateBuyProductsCache([]);
       }
     } catch (error) {
       console.error('❌ Error fetching buy products:', error);
-      setBuyProducts([]);
+      updateBuyProductsCache([]);
     } finally {
       setBuyLoading(false);
     }
@@ -309,66 +369,57 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   };
 
   // Fetch quotations from database - now based on selected company
-  const fetchQuotations = async () => {
-    const phoneNumber = selectedCompany?.contact || profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+
+    // Helper function to get phone number from profile with fallback
+  const getProfilePhoneNumber = () => {
+    // Priority order: selected company contact > profile data > user data > mock
+    let phoneNumber = selectedCompany?.contact;
     
-    console.log('🔍 Fetching quotations with phone number:', phoneNumber);
-    console.log('🎯 Selected company:', selectedCompany);
-    console.log('📋 Profile data:', profileData);
+    if (!phoneNumber && profileData) {
+      phoneNumber = profileData["Seller POC Contact Number"] || profileData["Buyer Phone"];
+    }
     
+    if (!phoneNumber && user?.phoneNumber) {
+      phoneNumber = user.phoneNumber;
+    }
+    
+    if (!phoneNumber && user?.phone) {
+      phoneNumber = user.phone;
+    }
+    
+    // Only use mock phone as absolute last resort
     if (!phoneNumber) {
-      console.log('❌ No phone number available for fetching quotations');
-      setQuotationData([]);
-      return;
+      phoneNumber = mockProfile.phone;
     }
-
-    try {
-      setQuotationLoading(true);
-      
-      // Build URL with query parameters if company is selected
-      let url = `/api/quotations/${encodeURIComponent(phoneNumber)}`;
-      const params = new URLSearchParams();
-      
-      if (selectedCompany && user?.email) {
-        params.append('email', user.email);
-        params.append('companyName', selectedCompany.name);
-      }
-      
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-      
-      console.log('🌐 Fetching quotations with URL:', url);
-      
-      const response = await fetch(url);
-      const data = await response.json();
-
-      console.log('📡 Quotations API response:', data);
-
-      if (response.ok) {
-        setQuotationData(data.quotations || []);
-      } else {
-        console.error('❌ Error fetching quotations:', data.error);
-        setQuotationData([]);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching quotations:', error);
-      setQuotationData([]);
-    } finally {
-      setQuotationLoading(false);
-    }
+    
+    return phoneNumber;
   };
 
-  // Fetch inquiries from database - now based on selected company
+  // Helper function to add country code if missing
+  const addCountryCode = (phoneNumber: string) => {
+    if (!phoneNumber) return phoneNumber;
+    
+    // Remove any existing country code
+    let cleanNumber = phoneNumber.replace(/^\+91\s*/, '').replace(/\s/g, '');
+    
+    // Add +91 if it's a 10-digit number
+    if (cleanNumber.length === 10 && /^\d{10}$/.test(cleanNumber)) {
+      return `+91${cleanNumber}`;
+    }
+    
+    // Return as-is if it already has country code or is not a valid 10-digit number
+    return phoneNumber;
+  };
+
+  // Fetch inquiries from database with smart phone number handling
   const fetchInquiries = async () => {
-    const phoneNumber = selectedCompany?.contact || profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+    const basePhoneNumber = getProfilePhoneNumber();
     
-    console.log('🔍 Fetching inquiries with phone number:', phoneNumber);
-    console.log('🎯 Selected company:', selectedCompany);
-    console.log('📋 Profile data:', profileData);
+    console.log('🔍 STARTING fetchInquiries function');
+    console.log('🔍 Base phone number from profile:', basePhoneNumber);
     
-    if (!phoneNumber) {
-      console.log('❌ No phone number available for fetching inquiries');
+    if (!basePhoneNumber || basePhoneNumber === mockProfile.phone) {
+      console.log('❌ No valid phone number available for fetching inquiries');
       setInquiryData([]);
       return;
     }
@@ -376,30 +427,44 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     try {
       setInquiryLoading(true);
       
-      // Build URL with query parameters if company is selected
+      // Try first with the phone number as-is
+      let phoneNumber = basePhoneNumber;
       let url = `/api/inquiries/${encodeURIComponent(phoneNumber)}`;
-      const params = new URLSearchParams();
       
-      if (selectedCompany && user?.email) {
-        params.append('email', user.email);
-        params.append('companyName', selectedCompany.name);
-      }
+      console.log('🌐 First attempt - Fetching inquiries with URL:', url);
       
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-      
-      console.log('🌐 Fetching inquiries with URL:', url);
-      
-      const response = await fetch(url);
-      const data = await response.json();
+      let response = await fetch(url);
+      let data = await response.json();
 
-      console.log('📡 Inquiries API response:', data);
+      console.log('📡 First attempt - Inquiries API response:', data);
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
 
-      if (response.ok) {
+      // If no inquiries found, try with country code added
+      if (response.ok && data.success && (!data.inquiries || data.inquiries.length === 0)) {
+        const phoneWithCountryCode = addCountryCode(basePhoneNumber);
+        
+        if (phoneWithCountryCode !== basePhoneNumber) {
+          console.log('🔄 No inquiries found, trying with country code:', phoneWithCountryCode);
+          
+          url = `/api/inquiries/${encodeURIComponent(phoneWithCountryCode)}`;
+          console.log('🌐 Second attempt - Fetching inquiries with URL:', url);
+      
+          response = await fetch(url);
+          data = await response.json();
+
+          console.log('📡 Second attempt - Inquiries API response:', data);
+          console.log('📡 Response status:', response.status);
+          console.log('📡 Response ok:', response.ok);
+        }
+      }
+
+      if (response.ok && data.success) {
+        console.log('✅ Setting inquiry data:', data.inquiries);
         setInquiryData(data.inquiries || []);
       } else {
-        console.error('❌ Error fetching inquiries:', data.error);
+        console.error('❌ Error fetching inquiries:', data.error || data.message);
+        console.error('❌ Full response data:', data);
         setInquiryData([]);
       }
     } catch (error) {
@@ -422,26 +487,33 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       setBuyLoading(true);
       setSellLoading(true);
       
-      fetchBuyProducts();
+      // Always fetch fresh data from backend to ensure consistency
+      // Don't use cache for company changes or initial load
+      fetchBuyProducts(true);
+      
       fetchSellProducts();
       fetchProfileData();
     }
   }, [user?.email, selectedCompany, companyLoading]);
 
-  // Fetch quotations and inquiries when profileData or selected company changes
+  // Fetch inquiries when profileData or selected company changes
   useEffect(() => {
-    if ((profileData || selectedCompany) && !companyLoading) {
-      console.log('🔄 Refreshing quotations and inquiries due to profile data or company change');
-      console.log('🎯 Selected company for history:', selectedCompany);
+    console.log('🔄 useEffect triggered for inquiries');
+    console.log('📋 profileData:', profileData);
+    console.log('🎯 selectedCompany:', selectedCompany);
+    console.log('⏳ companyLoading:', companyLoading);
+    
+    // Always fetch inquiries when not loading, regardless of profile data
+    if (!companyLoading) {
+      console.log('🔄 Fetching inquiries (forced phone number)');
       
       // Clear history data immediately when company changes
-      setQuotationData([]);
       setInquiryData([]);
-      setQuotationLoading(true);
       setInquiryLoading(true);
       
-      fetchQuotations();
       fetchInquiries();
+    } else {
+      console.log('❌ Company still loading - waiting...');
     }
   }, [profileData, selectedCompany, companyLoading]);
 
@@ -460,7 +532,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         fetchBuyProducts();
         fetchSellProducts();
         fetchProfileData();
-        fetchQuotations();
         fetchInquiries();
       }
     };
@@ -540,7 +611,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
     // Check for duplicates on the client side first (normalized)
     const trimmedProductName = newProductName.trim();
-    const normalizedNew = normalizeName(trimmedProductName);
+    const normalizedNew = normalizeName(trimmedValue);
     const productExists = buyProducts.some(existingProduct => 
       normalizeName(existingProduct) === normalizedNew
     );
@@ -578,7 +649,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       });
       if (response.ok) {
         const data = await response.json();
-        setBuyProducts(data.products);
+        console.log('✅ Product added successfully, backend response:', data);
+        
+        // Update cache with backend response to ensure consistency
+        updateBuyProductsCache(data.products);
         setNewProductName('');
         setAddProductError('');
         setAddProductWarning('');
@@ -591,10 +665,22 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         }, 2000);
       } else {
         const errorData = await response.json();
+        console.error('❌ Failed to add product:', errorData);
         setAddProductError(errorData.error || 'Failed to add product');
+        
+        // Force refresh cache to ensure consistency
+        setTimeout(() => {
+          forceRefreshCache();
+        }, 1000);
       }
     } catch (error) {
+      console.error('❌ Error adding product:', error);
       setAddProductError('Failed to add product');
+      
+      // Force refresh cache to ensure consistency
+      setTimeout(() => {
+        forceRefreshCache();
+      }, 1000);
     } finally {
       setAddingProduct(false);
     }
@@ -626,7 +712,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`Product request submitted successfully! Request ID: ${data.requestId}\n\nOur team will review your request and add it to the database if approved.`);
+        toast({
+          title: "Product Request Submitted",
+          description: `Request ID: ${data.requestId}. Our team will review your request and add it to the database if approved.`,
+        });
         setNewProductName('');
         setAddProductError('');
         setAddProductWarning('');
@@ -661,6 +750,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       }
       
       console.log('🔍 Removing buy product with request body:', requestBody);
+      console.log('🎯 Product to delete:', productName);
+      console.log('📧 User email:', user.email);
+      console.log('🏢 Selected company:', selectedCompany);
       
       const response = await fetch('/api/buy-products/remove', {
         method: 'DELETE',
@@ -672,16 +764,48 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setBuyProducts(data.products);
+        console.log('✅ Product removed successfully, backend response:', data);
+        
+        // Update cache with backend response to ensure consistency
+        updateBuyProductsCache(data.products);
         setDeleteBuySuccess(true);
         setDeleteBuyError(''); // Always clear error on success
+        
+        // Force refresh to ensure UI is updated immediately
+        setTimeout(() => {
+          forceRefreshCache();
+        }, 500);
       } else {
         const errorData = await response.json();
-        setDeleteBuyError(errorData.error || 'Failed to remove product');
+        console.error('❌ Failed to remove product:', errorData);
+        
+        // Don't show certain backend errors to user as they're confusing
+        // These usually mean the product was already deleted or there's a cache mismatch
+        if (errorData.error && (
+          errorData.error.includes('No products found for this email') ||
+          errorData.error.includes('Product not found in your list')
+        )) {
+          // Treat this as success since the product is effectively removed
+          setDeleteBuySuccess(true);
+          setDeleteBuyError('');
+          // Force refresh cache immediately to ensure consistency
+          forceRefreshCache();
+        } else {
+          setDeleteBuyError(errorData.error || 'Failed to remove product');
+        // Force refresh cache to ensure consistency
+        setTimeout(() => {
+          forceRefreshCache();
+        }, 1000);
+        }
       }
     } catch (error) {
-      console.error('Error removing product:', error);
+      console.error('❌ Error removing product:', error);
       setDeleteBuyError('Failed to remove product');
+      
+      // Force refresh cache to ensure consistency
+      setTimeout(() => {
+        forceRefreshCache();
+      }, 1000);
     }
   };
 
@@ -722,7 +846,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     );
 
     if (validProducts.length === 0) {
-      alert('Please fill in at least one product');
+      toast({
+        title: "Validation Error",
+        description: "Please fill in at least one product",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -733,7 +861,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     );
 
     if (!isValid) {
-      alert('Please fill in all required fields for the products you want to add');
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields for the products you want to add",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -766,29 +898,45 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         // Refresh the sell products list
         await fetchSellProducts();
         
-        setSellProductSuccess(`Successfully added ${data.count} product(s)!`);
-        
-        // Reset form
-        setSellProductForm([{
-          productName: '',
-          productCategory: 'Pharmaceutical',
-          description: '',
-          minimumQuantity: '',
-          unit: 'Kg',
-          customUnit: ''
-        }]);
-        
-        // Close modal after 3 seconds
-        setTimeout(() => {
-          setShowAddSellModal(false);
-          setSellProductSuccess('');
-          setSellProductError('');
-        }, 3000);
-        
-        // Store current tab before reloading
-        sessionStorage.setItem('profileActiveTab', tab);
-        // Reload the page to show changes
-        window.location.reload();
+        if (data.userConverted) {
+          // User has been converted to supplier
+          setSellProductSuccess(`Successfully registered as supplier with ${data.count} product(s)! Redirecting to supplier profile...`);
+          
+          // Update user status to supplier
+          if (user) {
+            user.isSupplier = true;
+            user.userType = 'supplier';
+          }
+          
+          // Redirect to supplier profile after 3 seconds
+          setTimeout(() => {
+            window.location.href = '/dashboard/profile';
+          }, 3000);
+        } else {
+          setSellProductSuccess(`Successfully added ${data.count} product(s)!`);
+          
+          // Reset form
+          setSellProductForm([{
+            productName: '',
+            productCategory: 'Pharmaceutical',
+            description: '',
+            minimumQuantity: '',
+            unit: 'Kg',
+            customUnit: ''
+          }]);
+          
+          // Close modal after 3 seconds
+          setTimeout(() => {
+            setShowAddSellModal(false);
+            setSellProductSuccess('');
+            setSellProductError('');
+          }, 3000);
+          
+          // Store current tab before reloading
+          sessionStorage.setItem('profileActiveTab', tab);
+          // Reload the page to show changes
+          window.location.reload();
+        }
       } else {
         if (data.duplicates && data.duplicates.length > 0) {
           setSellProductError(`Some products already exist: ${data.duplicates.join(', ')}`);
@@ -990,6 +1138,65 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
   };
 
+  // Convert buyer to supplier
+  const handleConvertToSupplier = async () => {
+    if (!editableEmail.trim() || !editablePhone.trim() || !gstNumber.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/convert-to-supplier', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: editableEmail,
+          phoneNumber: editablePhone,
+          companyName: sellerDetails?.legal_name || 'Unknown Company',
+          gstNumber: gstNumber,
+          sellerDetails: sellerDetails // Complete GST validation data
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "Successfully converted to supplier! Redirecting to supplier profile...",
+        });
+        
+        // Add a small delay to ensure database operations are complete
+        setTimeout(() => {
+          console.log('🔄 Redirecting to Profile.tsx with new seller parameters');
+          // Store new seller flag in sessionStorage as backup
+          sessionStorage.setItem('newSellerFlag', 'true');
+          // Redirect to Profile.tsx with sell tab active and new seller flag
+          window.location.href = '/dashboard/profile?tab=sell&newSeller=true';
+        }, 1000);
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || 'Failed to convert to supplier',
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error converting to supplier:', error);
+              toast({
+          title: "Error",
+          description: "Failed to convert to supplier. Please try again.",
+          variant: "destructive",
+        });
+    }
+  };
+
   // Supplier registration handlers
   const handleGstSubmit = async () => {
     if (!gstNumber.trim()) {
@@ -1013,42 +1220,23 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setEditablePhone(data.sellerDetails.mobileNumber || user?.phoneNumber || '');
         setShowSellerConfirmation(true);
       } else {
-        alert('Invalid GST number. Please check and try again.');
+        toast({
+          title: "Invalid GST Number",
+          description: "Please check and try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error validating GST:', error);
-      alert('Failed to validate GST. Please try again.');
+              toast({
+          title: "GST Validation Error",
+          description: "Failed to validate GST. Please try again.",
+          variant: "destructive",
+        });
     }
   };
 
-  const handleSellerConfirmation = () => {
-    setShowVerificationModal(true);
-    setVerificationStep('pending');
-  };
 
-  const handleVerificationSubmit = async () => {
-    if (!emailOtp.trim() || !phoneOtp.trim()) {
-      return;
-    }
-    
-    setVerificationStep('verifying');
-    
-    // Mock verification - in real app this would call verification APIs
-    setTimeout(() => {
-      setVerificationStep('success');
-      setTimeout(() => {
-        setShowVerificationModal(false);
-        setShowSellerConfirmation(false);
-        setGstNumber('');
-        setSellerDetails(null);
-        setEditableEmail('');
-        setEditablePhone('');
-        setEmailOtp('');
-        setPhoneOtp('');
-        setVerificationStep('pending');
-      }, 2000);
-    }, 2000);
-  };
 
   // Use profileData if available, otherwise fall back to mock data
   const displayName = profileData?.["Seller Name"] || user?.displayName || mockProfile.fullName;
@@ -1094,7 +1282,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content - Full Width */}
       <main className="profile-main">
         <div className="profile-tabs">
           {TABS.map((t) => (
@@ -1351,16 +1539,120 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.primary_business_address || '-'}</div>
                     </div>
                   </div>
-                  {/* Optionally, add more fields below in a details section */}
-                  <div style={{ marginTop: '16px' }}>
-                    <div><strong>GSTIN:</strong> {sellerDetails.gstin || '-'}</div>
-                    <div><strong>Email:</strong> {sellerDetails.emailId || '-'}</div>
-                    <div><strong>Phone:</strong> {sellerDetails.mobileNumber || '-'}</div>
-                    <div><strong>Registration Status:</strong> {sellerDetails.current_registration_status || '-'}</div>
-                    <div><strong>Business Constitution:</strong> {sellerDetails.business_constitution || '-'}</div>
-                    <div><strong>Turnover:</strong> {sellerDetails.aggregate_turn_over || '-'}</div>
-                    <div><strong>Registration Date:</strong> {sellerDetails.register_date || '-'}</div>
-                    <div><strong>Cancellation Date:</strong> {sellerDetails.register_cancellation_date || '-'}</div>
+                  
+                  {/* Contact Information Section */}
+                  <div style={{
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    border: '1px solid #e5e7eb',
+                    marginTop: '24px'
+                  }}>
+                    <h3 style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: '#1e293b',
+                      marginBottom: '20px',
+                      textAlign: 'center'
+                    }}>
+                      Contact Information
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '24px'
+                    }}>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          marginBottom: '8px',
+                          fontWeight: '500',
+                          color: '#374151',
+                          fontSize: '14px'
+                        }}>
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          value={editableEmail}
+                          onChange={(e) => setEditableEmail(e.target.value)}
+                          placeholder="Enter your email address"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '16px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s',
+                            boxSizing: 'border-box'
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          marginBottom: '8px',
+                          fontWeight: '500',
+                          color: '#374151',
+                          fontSize: '14px'
+                        }}>
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          value={editablePhone}
+                          onChange={(e) => setEditablePhone(e.target.value)}
+                          placeholder="Enter your phone number"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '16px',
+                            outline: 'none',
+                            transition: 'border-color 0.2s',
+                            boxSizing: 'border-box'
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                        />
+                      </div>
+                    </div>
+                    <div style={{
+                      marginTop: '24px',
+                      textAlign: 'center'
+                    }}>
+                      <button
+                        onClick={handleConvertToSupplier}
+                        disabled={!editableEmail.trim() || !editablePhone.trim()}
+                        style={{
+                          padding: '14px 32px',
+                          backgroundColor: editableEmail.trim() && editablePhone.trim() ? '#2563eb' : '#9ca3af',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          cursor: editableEmail.trim() && editablePhone.trim() ? 'pointer' : 'not-allowed',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseOver={(e) => {
+                          if (editableEmail.trim() && editablePhone.trim()) {
+                            e.currentTarget.style.backgroundColor = '#1d4ed8';
+                          }
+                        }}
+                        onMouseOut={(e) => {
+                          if (editableEmail.trim() && editablePhone.trim()) {
+                            e.currentTarget.style.backgroundColor = '#2563eb';
+                          }
+                        }}
+                      >
+                        Confirm & Continue
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1412,29 +1704,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                     <FileText size={16} />
                     Inquiry Raised
                   </button>
-                  <button
-                    className={`history-tab-btn ${historyTab === 'quotation' ? 'active' : ''}`}
-                    onClick={() => setHistoryTab('quotation')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '12px 24px',
-                      border: 'none',
-                      background: historyTab === 'quotation' ? '#eff6ff' : 'none',
-                      color: historyTab === 'quotation' ? '#2563eb' : '#6b7280',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      transition: 'all 0.2s ease',
-                      borderBottom: historyTab === 'quotation' ? '2px solid #2563eb' : 'none',
-                      height: '40px',
-                    }}
-                  >
-                    <IndianRupee size={16} />
-                    Quotation Sent
-                  </button>
+
                 </div>
               </div>
               {/* Search Bar and Date Pickers in their own new line */}
@@ -1508,80 +1778,13 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                     </div>
                   </>
                 )}
-                {historyTab === 'quotation' && (
-                  <>
-                    <input
-                      type="text"
-                      placeholder="Search quotations..."
-                      value={quotationSearch}
-                      onChange={(e) => setQuotationSearch(e.target.value)}
-                      style={{
-                        padding: '12px 16px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        width: '180px',
-                        outline: 'none',
-                        transition: 'border-color 0.2s ease',
-                        height: '40px',
-                        boxSizing: 'border-box',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                    />
-                    <div className="date-range-row">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>From:</span>
-                        <input
-                          type="date"
-                          value={quotationStartDate}
-                          onChange={(e) => setQuotationStartDate(e.target.value)}
-                          style={{
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            width: '120px',
-                            outline: 'none',
-                            transition: 'border-color 0.2s ease',
-                            height: '32px',
-                            boxSizing: 'border-box',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>To:</span>
-                        <input
-                          type="date"
-                          value={quotationEndDate}
-                          onChange={(e) => setQuotationEndDate(e.target.value)}
-                          style={{
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            width: '120px',
-                            outline: 'none',
-                            transition: 'border-color 0.2s ease',
-                            height: '32px',
-                            boxSizing: 'border-box',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
+
               </div>
 
               {/* Inquiry Raised Content */}
               {historyTab === 'inquiry' && (
                 <div className="inquiry-content">
+
                   {companyLoading || inquiryLoading ? (
                     <div style={{
                       display: 'flex',
@@ -1607,36 +1810,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         </div>
                       </div>
                     </div>
-                  ) : inquiryData.length === 0 ? (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      padding: '40px',
-                      color: '#6b7280'
-                    }}>
-                      <div style={{
-                        textAlign: 'center'
-                      }}>
-                        <div style={{
-                          fontSize: '16px',
-                          marginBottom: '8px'
-                        }}>
-                          No inquiries found
-                        </div>
-                        <div style={{
-                          fontSize: '14px',
-                          color: '#9ca3af'
-                        }}>
-                          {(() => {
-                            const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
-                            return phoneNumber ? 
-                              `No inquiries found for phone number: ${phoneNumber}` : 
-                              'Phone number not available to fetch inquiries';
-                          })()}
-                        </div>
-                      </div>
-                    </div>
                   ) : (
                     <div className="inquiry-grid" style={{
                       display: 'grid',
@@ -1646,9 +1819,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       {inquiryData
                         .filter(inquiry => {
                           const searchTerm = inquirySearch.toLowerCase();
-                          const productNames = Array.isArray(inquiry.products) 
-                            ? inquiry.products.join(' ').toLowerCase()
-                            : inquiry.productName.toLowerCase();
+                          const productNames = (inquiry.product || inquiry.productName || '').toLowerCase();
                           const matchesSearch = productNames.includes(searchTerm) ||
                             inquiry.deliveryLocation.toLowerCase().includes(searchTerm) ||
                             inquiry.quantity.toLowerCase().includes(searchTerm) ||
@@ -1680,9 +1851,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                 color: '#1f2937',
                                 margin: '0 0 4px 0'
                               }}>
-                                {Array.isArray(inquiry.products) 
-                                  ? inquiry.products.join(', ')
-                                  : inquiry.productName}
+                                {inquiry.product || inquiry.productName || 'Unknown Product'}
                               </h3>
                               {inquiry.formattedDate && (
                                 <div style={{
@@ -1773,240 +1942,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 </div>
               )}
 
-              {/* Quotation Sent Content */}
-              {historyTab === 'quotation' && (
-                <div className="quotation-content">
-                  {companyLoading || quotationLoading ? (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      padding: '40px',
-                      color: '#6b7280'
-                    }}>
-                      <div style={{
-                        textAlign: 'center'
-                      }}>
-                        <div style={{
-                          fontSize: '16px',
-                          marginBottom: '8px'
-                        }}>
-                          {companyLoading ? 'Loading company data...' : 'Loading quotations...'}
-                        </div>
-                        <div style={{
-                          fontSize: '14px',
-                          color: '#9ca3af'
-                        }}>
-                          Please wait while we fetch your quotation history
-                        </div>
-                      </div>
-                    </div>
-                  ) : quotationData.length === 0 ? (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      padding: '40px',
-                      color: '#6b7280'
-                    }}>
-                      <div style={{
-                        textAlign: 'center'
-                      }}>
-                        <div style={{
-                          fontSize: '16px',
-                          marginBottom: '8px'
-                        }}>
-                          No quotations found
-                        </div>
-                        <div style={{
-                          fontSize: '14px',
-                          color: '#9ca3af'
-                        }}>
-                          {(() => {
-                            const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
-                            return phoneNumber ? 
-                              `No quotations found for phone number: ${phoneNumber}` : 
-                              'Phone number not available to fetch quotations';
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="quotation-grid" style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-                      gap: '20px'
-                    }}>
-                      {quotationData
-                        .filter(quotation => {
-                          const searchTerm = quotationSearch.toLowerCase();
-                          const matchesSearch = quotation.productName.toLowerCase().includes(searchTerm) ||
-                            quotation.description.toLowerCase().includes(searchTerm) ||
-                            quotation.paymentTerms.toLowerCase().includes(searchTerm) ||
-                            quotation.deliveryTime.toLowerCase().includes(searchTerm);
-                          
-                          const matchesDate = matchesDateRangeFilter(quotation.submissionDate, quotationStartDate, quotationEndDate);
-                          
-                          return matchesSearch && matchesDate;
-                        })
-                        .map((quotation) => (
-                        <div key={quotation.id} className="quotation-card" style={{
-                          background: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '12px',
-                          padding: '20px',
-                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                          transition: 'box-shadow 0.2s ease'
-                        }}>
-                          <div className="quotation-header" style={{
-                            marginBottom: '16px'
-                          }}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'flex-start',
-                              marginBottom: '8px'
-                            }}>
-                              <h3 style={{
-                                fontSize: '18px',
-                                fontWeight: '600',
-                                color: '#1f2937',
-                                margin: '0'
-                              }}>
-                                {quotation.productName}
-                              </h3>
-                              {quotation.formattedDate && (
-                                <div style={{
-                                  fontSize: '12px',
-                                  color: '#6b7280'
-                                }}>
-                                  {quotation.formattedDate}
-                                </div>
-                              )}
-                            </div>
-                            <p style={{
-                              fontSize: '14px',
-                              color: '#6b7280',
-                              margin: '0',
-                              lineHeight: '1.5'
-                            }}>
-                              {quotation.description}
-                            </p>
-                          </div>
 
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: '12px',
-                            marginBottom: '16px',
-                            padding: '12px',
-                            backgroundColor: '#f8fafc',
-                            borderRadius: '8px'
-                          }}>
-                            <div>
-                              <div style={{
-                                fontSize: '12px',
-                                color: '#6b7280',
-                                marginBottom: '2px'
-                              }}>
-                                Unit Rate
-                              </div>
-                              <div style={{
-                                fontSize: '16px',
-                                fontWeight: '600',
-                                color: '#059669'
-                              }}>
-                                ₹{quotation.unitRate}/unit
-                              </div>
-                            </div>
-                            <div>
-                              <div style={{
-                                fontSize: '12px',
-                                color: '#6b7280',
-                                marginBottom: '2px'
-                              }}>
-                                Cash Rate
-                              </div>
-                              <div style={{
-                                fontSize: '16px',
-                                fontWeight: '600',
-                                color: '#dc2626'
-                              }}>
-                                ₹{quotation.cashRate}/unit
-                              </div>
-                            </div>
-                          </div>
-
-                          <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px',
-                            marginBottom: '16px'
-                          }}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}>
-                              <span style={{
-                                fontSize: '12px',
-                                color: '#6b7280'
-                              }}>
-                                Payment Terms
-                              </span>
-                              <span style={{
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: '#1f2937'
-                              }}>
-                                {quotation.paymentTerms}
-                              </span>
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}>
-                              <span style={{
-                                fontSize: '12px',
-                                color: '#6b7280'
-                              }}>
-                                Delivery Time
-                              </span>
-                              <span style={{
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: '#1f2937'
-                              }}>
-                                {quotation.deliveryTime}
-                              </span>
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}>
-                              <span style={{
-                                fontSize: '12px',
-                                color: '#6b7280'
-                              }}>
-                                Additional Expenses
-                              </span>
-                              <span style={{
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: '#1f2937'
-                              }}>
-                                {quotation.additionalExpenses}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -2778,209 +2714,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         </div>
       )}
 
-      {/* Verification Modal */}
-      {showVerificationModal && (
-        <div className="modal-overlay" onClick={() => setShowVerificationModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3>Verify Contact Information</h3>
-              <button 
-                className="modal-close-btn"
-                onClick={() => setShowVerificationModal(false)}
-                disabled={verificationStep === 'verifying'}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="modal-body">
-              {verificationStep === 'success' ? (
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  <div style={{ fontSize: '48px', color: '#10b981', marginBottom: '16px' }}>✓</div>
-                  <h3 style={{ color: '#10b981', marginBottom: '8px' }}>Verification Successful!</h3>
-                  <p style={{ color: '#6b7280', marginBottom: '20px' }}>Your contact information has been verified successfully.</p>
-                </div>
-              ) : verificationStep === 'error' ? (
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  <div style={{ fontSize: '48px', color: '#ef4444', marginBottom: '16px' }}>✗</div>
-                  <h3 style={{ color: '#ef4444', marginBottom: '8px' }}>Verification Failed</h3>
-                  <p style={{ color: '#6b7280', marginBottom: '20px' }}>Please check your OTP codes and try again.</p>
-                </div>
-              ) : (
-                <>
-                  <p style={{ marginBottom: '24px', color: '#6b7280', textAlign: 'center' }}>
-                    We've sent verification codes to your email and phone number. Please enter them below.
-                  </p>
-                  
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      fontSize: '14px'
-                    }}>
-                      Email OTP (sent to {editableEmail})
-                    </label>
-                    <input
-                      type="text"
-                      value={emailOtp}
-                      onChange={(e) => setEmailOtp(e.target.value)}
-                      placeholder="Enter 6-digit email OTP"
-                      maxLength={6}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '16px',
-                        outline: 'none',
-                        transition: 'border-color 0.2s',
-                        boxSizing: 'border-box'
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      disabled={verificationStep === 'verifying'}
-                    />
-                  </div>
-                  
-                  <div style={{ marginBottom: '24px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      fontSize: '14px'
-                    }}>
-                      Phone OTP (sent to {editablePhone})
-                    </label>
-                    <input
-                      type="text"
-                      value={phoneOtp}
-                      onChange={(e) => setPhoneOtp(e.target.value)}
-                      placeholder="Enter 6-digit phone OTP"
-                      maxLength={6}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '16px',
-                        outline: 'none',
-                        transition: 'border-color 0.2s',
-                        boxSizing: 'border-box'
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                      disabled={verificationStep === 'verifying'}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="modal-footer">
-              {verificationStep === 'success' ? (
-                <button 
-                  className="modal-submit-btn"
-                  onClick={() => setShowVerificationModal(false)}
-                  style={{ width: '100%' }}
-                >
-                  Continue
-                </button>
-              ) : verificationStep === 'error' ? (
-                <button 
-                  className="modal-submit-btn"
-                  onClick={() => setVerificationStep('pending')}
-                  style={{ width: '100%' }}
-                >
-                  Try Again
-                </button>
-              ) : (
-                <>
-                  <button 
-                    className="modal-cancel-btn"
-                    onClick={() => setShowVerificationModal(false)}
-                    disabled={verificationStep === 'verifying'}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    className="modal-submit-btn"
-                    onClick={handleVerificationSubmit}
-                    disabled={!emailOtp.trim() || !phoneOtp.trim() || verificationStep === 'verifying'}
-                  >
-                    {verificationStep === 'verifying' ? 'Verifying...' : 'Verify & Submit'}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {showSellerConfirmation && sellerDetails && (
-        <div style={{
-          background: '#f9fafb',
-          borderRadius: '16px',
-          padding: '32px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-        }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#1e293b',
-            marginBottom: '24px',
-            textAlign: 'center'
-          }}>
-            Please confirm the following seller details:
-          </h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '32px',
-            background: '#f1f5f9',
-            borderRadius: '12px',
-            padding: '32px',
-            marginBottom: '24px'
-          }}>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Seller Name</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.legal_name || '-'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>State</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.state_jurisdiction || '-'}</div>
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Seller Address</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.primary_business_address || '-'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>PIN Code</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{(() => {
-                const addr = sellerDetails.primary_business_address || '';
-                const match = addr.match(/(\d{6})\b/);
-                return match ? match[1] : '-';
-              })()}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: '500' }}>Product Address</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{sellerDetails.primary_business_address || '-'}</div>
-            </div>
-          </div>
-          {/* Optionally, add more fields below in a details section */}
-          <div style={{ marginTop: '16px' }}>
-            <div><strong>GSTIN:</strong> {sellerDetails.gstin || '-'}</div>
-            <div><strong>Email:</strong> {sellerDetails.emailId || '-'}</div>
-            <div><strong>Phone:</strong> {sellerDetails.mobileNumber || '-'}</div>
-            <div><strong>Registration Status:</strong> {sellerDetails.current_registration_status || '-'}</div>
-            <div><strong>Business Constitution:</strong> {sellerDetails.business_constitution || '-'}</div>
-            <div><strong>Turnover:</strong> {sellerDetails.aggregate_turn_over || '-'}</div>
-            <div><strong>Registration Date:</strong> {sellerDetails.register_date || '-'}</div>
-            <div><strong>Cancellation Date:</strong> {sellerDetails.register_cancellation_date || '-'}</div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

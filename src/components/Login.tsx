@@ -5,6 +5,7 @@ import { auth, googleProvider, db } from '../lib/firebase';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import RegistrationMessage from './RegistrationMessage';
+import { useToast } from '../hooks/use-toast';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -20,11 +21,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [tempUserData, setTempUserData] = useState(null);
+  
+  // Use toast for notifications
+  const { toast } = useToast();
 
-  // Check for existing user session when modal opens
+  // Only reset modal state when it is closed, not on every open
   useEffect(() => {
-    if (isOpen) {
-      // Reset states when modal opens
+    if (!isOpen) {
       setShowSuccessMessage(false);
       setShowRegistrationMessage(false);
       setShowPhoneInput(false);
@@ -32,13 +35,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
       setPhoneNumber('');
       setLoading(false);
       setTempUserData(null);
-      
-      const currentUser = localStorage.getItem('sourceasy_current_user');
-      if (currentUser) {
-        const userData = JSON.parse(currentUser);
-        console.log('Found existing user session:', userData);
-        // You can handle existing user here - maybe show a different UI or auto-close
-      }
     }
   }, [isOpen]);
 
@@ -106,77 +102,46 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
       
       console.log('Google sign-in successful, checking email in database...');
       
-      // First, check if user already exists in Firestore with phone number
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          if (userData.phoneNumber) {
-            // User is already a buyer
-            console.log('User is already a buyer with phone number');
-            const buyerData = {
-              ...userData,
-              isSupplier: false,
-              userType: 'buyer'
-            };
-            setShowSuccessMessage(true);
-            setTempUserData(buyerData);
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (err) {
-        console.log('Error checking Firestore:', err);
-      }
-      
-      // Check if email exists in Pinecone database (suppliers)
+      // Check if email exists in either supplier or buyer database
       const emailCheckResult = await checkEmailInDatabase(user.email || '');
-      
-      console.log('Email check result:', emailCheckResult);
-      
-      if (!emailCheckResult.exists) {
-        console.log('Email not found, checking requiresPhone:', emailCheckResult.requiresPhone);
-        if (emailCheckResult.requiresPhone) {
-          // Email not found and phone number required
-          console.log('Showing phone input form');
-          setUserEmail(user.email || '');
-          setShowPhoneInput(true);
-          setLoading(false);
-          return;
-        } else {
-          // Email not found in database, sign out the user and show registration message
-          console.log('Showing registration message');
-          await signOut(auth);
-          setUserEmail(user.email || '');
-          setShowRegistrationMessage(true);
-          setLoading(false);
-          return;
-        }
-      }
-      
-      // Email found in database, proceed with normal login (supplier)
+      // Always define userData after getting user and emailCheckResult
       const userData = { 
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
         createdAt: new Date().toISOString(),
-        supplierData: emailCheckResult.supplierData || null,
-        isSupplier: emailCheckResult.isSupplier || true
+        isSupplier: emailCheckResult.userType === 'supplier',
+        userType: emailCheckResult.userType,
+        // Store phone number from database
+        phoneNumber: emailCheckResult.userType === 'buyer' ? emailCheckResult.buyerData?.['Buyer Phone'] : 
+                    emailCheckResult.userType === 'supplier' ? emailCheckResult.supplierData?.mobileNumber : null,
+        ...(emailCheckResult.userType === 'supplier' ? { supplierData: emailCheckResult.supplierData } : {}),
+        ...(emailCheckResult.userType === 'buyer' ? { buyerData: emailCheckResult.buyerData } : {})
       };
       
-      console.log('User data to save:', userData);
-      
-      await setDoc(doc(db, 'users', user.uid), userData, { merge: true });
-      
-      // Show success message first
-      console.log('Setting success message to true');
+      // If not found, only show phone input for buyers
+      if (!emailCheckResult.exists) {
+        if (emailCheckResult.userType === 'buyer' || emailCheckResult.userType === undefined) {
+          setUserEmail(user.email || '');
+          setShowPhoneInput(true);
+          setLoading(false);
+          return;
+        } else {
+          // If userType is supplier or unknown, treat as success
+          console.log('LOGIN FIX: Seller or unknown type, showing success message');
+          setShowSuccessMessage(true);
+          setTempUserData(userData);
+          // Show success message and wait for user to click Continue
+          return;
+        }
+      }
+      // Email found in database, proceed with login
+      console.log('LOGIN FIX: Email found, showing success message');
       setShowSuccessMessage(true);
-      console.log('Success message state set, should show success UI');
-      
-      // Don't call onAuthSuccess immediately - let the success message be shown first
-      // onAuthSuccess will be called when user clicks "Continue"
       setTempUserData(userData);
+      // Show success message and wait for user to click Continue
+      return;
     } catch (error: any) {
       console.error('Error during Google sign-in:', error);
       console.error('Error details:', {
@@ -194,7 +159,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
         errorMessage = error.message;
       }
       
-      alert(errorMessage);
+      toast({
+        title: "Sign-in Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -203,7 +172,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
   // Handle phone number submission
   const handlePhoneSubmit = async () => {
     if (!phoneNumber.trim()) {
-      alert('Please enter your phone number');
+      toast({
+        title: "Validation Error",
+        description: "Please enter your phone number",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -214,13 +187,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
       
       if (emailCheckResult.exists) {
         // This shouldn't happen, but handle it gracefully
-        alert('Email already exists in database');
+        toast({
+          title: "Registration Error",
+          description: "Email already exists in database",
+          variant: "destructive",
+        });
         setShowPhoneInput(false);
         setLoading(false);
         return;
       }
 
-      // Add user as buyer
+      // Add user as buyer to buyer database
       const buyerResult = await addUserAsBuyer(userEmail, phoneNumber, 'Buyer');
       
       // Get current Firebase user
@@ -238,19 +215,26 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
         createdAt: new Date().toISOString(),
         phoneNumber: phoneNumber,
         isSupplier: false,
-        userType: 'buyer'
+        userType: 'buyer',
+        buyerData: buyerResult.buyerData
       };
       
       console.log('Buyer data to save:', userData);
       
       await setDoc(doc(db, 'users', currentUser.uid), userData, { merge: true });
       
-      // Show success message
+      // Show success message and wait for user to click Continue
       setShowSuccessMessage(true);
       setTempUserData(userData);
+      // Do NOT auto-close or call onAuthSuccess here; let the Continue button handle it
+      return;
     } catch (error: any) {
       console.error('Error adding user as buyer:', error);
-      alert('Failed to register as buyer. Please try again.');
+      toast({
+        title: "Registration Error",
+        description: "Failed to register as buyer. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -301,18 +285,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
                 <div className="form-group">
                   <label className="form-label">Phone Number Required</label>
                   <p className="form-description">
-                    Please provide your phone number to continue as a buyer.
+                    To continue as a buyer, you must provide your phone number. This is required for account verification and communication.
                   </p>
                   <div className="input-group">
                     <input
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="Enter your phone number"
+                      placeholder="Enter your phone number (required)"
                       className="phone-input"
                       disabled={loading}
+                      required
                     />
                   </div>
+                  <p className="form-note">
+                    * Phone number is mandatory for buyer registration
+                  </p>
                 </div>
                 <div className="button-group">
                   <button 
@@ -320,7 +308,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onAuthSuccess 
                     className="submit-button" 
                     disabled={loading || !phoneNumber.trim()}
                   >
-                    {loading ? 'Processing...' : 'Continue'}
+                    {loading ? 'Processing...' : 'Login'}
                   </button>
                   <button 
                     onClick={() => {

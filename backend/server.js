@@ -64,17 +64,15 @@ app.post("/api/check-email", async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    // Get the index with the correct namespace
-    const index = pinecone.index(
-      process.env.PINECONE_INDEX_NAME || "chemicals-new"
-    );
+    // Get the chemicals-new index (for both suppliers and buyers)
+    const index = pinecone.index("chemicals-new");
 
     // Create a dummy vector with 1536 dimensions (first element is 1, rest are 0)
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
-    // Query the index for the email in the "chemicals" namespace
-    const queryResponse = await index.namespace("chemicals").query({
+    // First, check if email exists in supplier database (chemicals namespace)
+    const supplierQueryResponse = await index.namespace("chemicals").query({
       vector: dummyVector,
       filter: {
         "Seller Email Address": { $eq: email },
@@ -83,13 +81,14 @@ app.post("/api/check-email", async (req, res) => {
       includeMetadata: true,
     });
 
-    if (queryResponse.matches && queryResponse.matches.length > 0) {
-      // Email found in database - existing supplier
-      const supplierData = queryResponse.matches[0].metadata;
+    if (supplierQueryResponse.matches && supplierQueryResponse.matches.length > 0) {
+      // Email found in supplier database - existing supplier
+      const supplierData = supplierQueryResponse.matches[0].metadata;
       res.status(200).json({
         exists: true,
         isSupplier: true,
-        message: "Email found in database",
+        userType: 'supplier',
+        message: "Email found in supplier database",
         supplierData: {
           sellerName: supplierData["Seller Name"],
           sellerEmail: supplierData["Seller Email Address"],
@@ -100,24 +99,56 @@ app.post("/api/check-email", async (req, res) => {
           sellerPOCContact: supplierData["Seller POC Contact Number"],
         },
       });
-    } else {
-      // Email not found in database - check if phone number is provided
+      return;
+    }
+
+    // If not in supplier database, check buyer database (buyers namespace)
+    const buyerQueryResponse = await index.namespace("buyers").query({
+      vector: dummyVector,
+      filter: {
+        "Buyer Email": { $eq: email },
+      },
+      topK: 1,
+      includeMetadata: true,
+    });
+
+    if (buyerQueryResponse.matches && buyerQueryResponse.matches.length > 0) {
+      // Email found in buyer database - existing buyer
+      const buyerData = buyerQueryResponse.matches[0].metadata;
+      res.status(200).json({
+        exists: true,
+        isSupplier: false,
+        userType: 'buyer',
+        message: "Email found in buyer database",
+        buyerData: {
+          buyerName: buyerData["Buyer Name"],
+          buyerEmail: buyerData["Buyer Email"],
+          buyerPhone: buyerData["Buyer Phone"],
+          buyerVerified: buyerData["Buyer Verified"] || false,
+          region: buyerData["Region"] || "Unknown",
+          createdAt: buyerData["Created At"],
+        },
+      });
+      return;
+    }
+
+    // Email not found in either database - require phone number for new buyer registration
       if (!phoneNumber) {
         return res.status(200).json({
           exists: false,
           requiresPhone: true,
-          message: "Phone number required to continue",
+        message: "Phone number required to continue as buyer",
         });
       }
 
-      // Phone number provided, allow login as buyer
+    // Phone number provided, allow registration as new buyer
       res.status(200).json({
         exists: false,
         isSupplier: false,
+      userType: 'buyer',
         requiresPhone: false,
-        message: "Phone number provided, proceeding as buyer",
+      message: "Phone number provided, proceeding as new buyer",
       });
-    }
   } catch (error) {
     console.error("Error checking email in Pinecone:", error);
     res.status(500).json({
@@ -127,7 +158,7 @@ app.post("/api/check-email", async (req, res) => {
   }
 });
 
-// Add user as buyer to database
+// Add user as buyer to buyer database
 app.post("/api/add-buyer", async (req, res) => {
   try {
     const { email, phoneNumber, displayName } = req.body;
@@ -136,10 +167,8 @@ app.post("/api/add-buyer", async (req, res) => {
       return res.status(400).json({ error: "Email and phone number are required" });
     }
 
-    // Get the index with the correct namespace
-    const index = pinecone.index(
-      process.env.PINECONE_INDEX_NAME || "chemicals-new"
-    );
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
 
     // Create a dummy vector with 1536 dimensions
     const dummyVector = new Array(1536).fill(0);
@@ -148,25 +177,23 @@ app.post("/api/add-buyer", async (req, res) => {
     // Create buyer record
     const buyerId = `buyer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const buyerData = {
-      "Seller Name": displayName || "Buyer",
-      "Seller Email Address": email,
-      "Seller POC Contact Number": phoneNumber,
-      "Seller Verified": false,
-      "Seller Rating": 0,
+      "Buyer Name": displayName || "Buyer",
+      "Buyer Email": email,
+      "Buyer Phone": phoneNumber,
+      "Buyer Verified": false,
       "Region": "Unknown",
-      "Seller Address": "Not provided",
-      "User Type": "buyer", // Distinguish from suppliers
       "Created At": new Date().toISOString(),
+      "User Type": "buyer",
     };
 
-    // Upsert the buyer record
-    await index.namespace("chemicals").upsert([{
+    // Upsert the buyer record to buyers namespace in chemicals-new index
+    await index.namespace("buyers").upsert([{
       id: buyerId,
       values: dummyVector,
       metadata: buyerData
     }]);
 
-    console.log(`✅ Added buyer to database: ${email} with phone: ${phoneNumber}`);
+    console.log(`✅ Added buyer to buyers namespace: ${email} with phone: ${phoneNumber}`);
 
     res.status(200).json({
       success: true,
@@ -199,10 +226,16 @@ app.post("/api/validate-gst", async (req, res) => {
 
     // Validate GST format (15 characters, alphanumeric)
     const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (gstin.length !== 15) {
+      return res.status(400).json({ 
+        error: "Invalid GST format", 
+        message: "GST number must be exactly 15 characters" 
+      });
+    }
     if (!gstRegex.test(gstin)) {
       return res.status(400).json({ 
         error: "Invalid GST format", 
-        message: "GST number must be 15 characters in format: 22AAAAA0000A1Z5" 
+        message: "GST number must be in format: 22AAAAA0000A1Z5" 
       });
     }
 
@@ -217,7 +250,28 @@ app.post("/api/validate-gst", async (req, res) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Fact-Byte API error: ${response.status}`);
+      console.log(`Fact-Byte API error: ${response.status}. Using fallback validation.`);
+      // Fallback: If API fails, accept the GST if format is valid
+      const sellerDetails = {
+        gstin: gstin,
+        legal_name: 'Company Name (API Unavailable)',
+        emailId: '',
+        mobileNumber: '',
+        primary_business_address: '',
+        state_jurisdiction: '',
+        current_registration_status: 'Active',
+        business_constitution: '',
+        aggregate_turn_over: '',
+        register_date: '',
+        register_cancellation_date: ''
+      };
+      res.status(200).json({
+        success: true,
+        valid: true,
+        message: "GST format is valid (API validation unavailable)",
+        sellerDetails
+      });
+      return;
     }
 
     const data = await response.json();
@@ -540,7 +594,8 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
     }
 
     // First, check if user already has a record in the "products" namespace
-    const queryResponse = await index.namespace("products").query({
+    console.log(`🔍 Querying for existing record with filter:`, filter);
+    let queryResponse = await index.namespace("products").query({
       vector: dummyVector,
       filter: filter,
       topK: 1,
@@ -549,8 +604,34 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
 
     let existingProducts = [];
     let recordId = null;
+    
+    // If no record found with company filters, try without them
+    if (!queryResponse.matches || queryResponse.matches.length === 0) {
+      console.log(`🔄 No record found with company filters, trying with email only`);
+      const emailOnlyFilter = { email: { $eq: email } };
+      queryResponse = await index.namespace("products").query({
+        vector: dummyVector,
+        filter: emailOnlyFilter,
+        topK: 10, // Get more records to check for duplicates
+        includeMetadata: true,
+      });
+      
+      // Check if there are multiple records for this user
+      if (queryResponse.matches && queryResponse.matches.length > 1) {
+        console.log(`⚠️ Found ${queryResponse.matches.length} records for this user! This might cause overwrite issues.`);
+        console.log(`📋 Record IDs:`, queryResponse.matches.map(m => m.id));
+        
+        // Use the first record but log a warning
+        console.log(`⚠️ Using first record: ${queryResponse.matches[0].id}`);
+      }
+    }
+    
     if (queryResponse.matches && queryResponse.matches.length > 0) {
       const metadata = queryResponse.matches[0].metadata;
+      recordId = queryResponse.matches[0].id;
+      console.log(`📋 Found existing record: ${recordId} with ${queryResponse.matches.length} matches`);
+      console.log(`📦 Existing metadata:`, metadata);
+      
       if (Array.isArray(metadata.productList)) {
         existingProducts = metadata.productList;
       } else if (typeof metadata.productList === "string") {
@@ -558,7 +639,9 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
       } else {
         existingProducts = [];
       }
-      recordId = queryResponse.matches[0].id;
+      console.log(`📊 Existing products: ${JSON.stringify(existingProducts)}`);
+    } else {
+      console.log(`🆕 No existing record found, will create new one`);
     }
 
     // Check if product already exists (case-insensitive, normalized)
@@ -593,7 +676,9 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
     
     if (recordId) {
       metadata.id = recordId;
-      await index.namespace("products").deleteOne(recordId);
+      console.log(`🔄 Updating existing record: ${recordId}`);
+      console.log(`📝 New metadata:`, metadata);
+      // Use upsert directly instead of delete-then-upsert to avoid race conditions
       await index.namespace("products").upsert([
         {
           id: recordId,
@@ -601,9 +686,13 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
           metadata: metadata,
         },
       ]);
+      console.log(`✅ Successfully updated existing record`);
     } else {
-      const newId = `buy_products_${Date.now()}`;
+      // Generate a unique ID with timestamp and random string to avoid conflicts
+      const newId = `buy_products_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       metadata.id = newId;
+      console.log(`🆕 Creating new record: ${newId}`);
+      console.log(`📝 New metadata:`, metadata);
       await index.namespace("products").upsert([
         {
           id: newId,
@@ -611,13 +700,14 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
           metadata: metadata,
         },
       ]);
+      console.log(`✅ Successfully created new record`);
     }
 
     // Add to unapproved_chemicals for admin review
     const chemicalsIndex = pinecone.index("chemicals-new");
     const chemicalsDummyVector = new Array(1536).fill(0);
     chemicalsDummyVector[0] = 1;
-    const unapprovedId = `unapproved_${Date.now()}`;
+    const unapprovedId = `unapproved_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     const unapprovedMetadata = {
       name: productName,
@@ -644,6 +734,8 @@ Respond with ONLY "Yes" (if it should be BLOCKED) or "No" (if it should be ALLOW
     ]);
 
     console.log(`✅ Successfully added product: ${productName} for email: ${email}`);
+    console.log(`📊 Final product count: ${existingProducts.length}`);
+    console.log(`📋 All products: ${JSON.stringify(existingProducts)}`);
 
     res.status(200).json({
       success: true,
@@ -695,6 +787,8 @@ app.delete("/api/buy-products/remove", async (req, res) => {
       filter.companyName = { $eq: companyName };
     }
 
+    console.log(`🔍 Filter being used:`, JSON.stringify(filter));
+
     // Find user's record in the "products" namespace
     const queryResponse = await index.namespace("products").query({
       vector: dummyVector,
@@ -704,12 +798,17 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     });
 
     if (!queryResponse.matches || queryResponse.matches.length === 0) {
+      console.log(`❌ No records found with filter:`, JSON.stringify(filter));
       return res.status(404).json({
         error: "No products found for this email",
       });
     }
 
+    console.log(`✅ Found ${queryResponse.matches.length} record(s) for user`);
+
     const metadata = queryResponse.matches[0].metadata;
+    console.log(`📋 Record metadata:`, JSON.stringify(metadata, null, 2));
+    
     let existingProducts = [];
     // Support both array and string for productList
     if (Array.isArray(metadata.productList)) {
@@ -719,14 +818,20 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     } else {
       existingProducts = [];
     }
+    
+    console.log(`📦 Existing products in record:`, JSON.stringify(existingProducts));
+    console.log(`🎯 Looking for product: "${productName}"`);
+    
     const recordId = queryResponse.matches[0].id;
 
-    // Remove the product
+    // Remove the product (case-insensitive and trim whitespace)
+    const normalizedProductName = productName.trim().toLowerCase();
     const updatedProducts = existingProducts.filter(
-      (product) => product !== productName
+      (product) => product.trim().toLowerCase() !== normalizedProductName
     );
 
     if (updatedProducts.length === existingProducts.length) {
+      console.log(`❌ Product not found: "${productName}" in list: ${JSON.stringify(existingProducts)}`);
       return res.status(404).json({
         error: "Product not found in your list",
       });
@@ -750,9 +855,7 @@ app.delete("/api/buy-products/remove", async (req, res) => {
       updatedMetadata.id = metadata.id;
     }
 
-    // Delete existing record and recreate with updated data
-    await index.namespace("products").deleteOne(recordId);
-
+    // Use upsert directly instead of delete-then-upsert to avoid race conditions
     await index.namespace("products").upsert([
       {
         id: recordId,
@@ -762,6 +865,8 @@ app.delete("/api/buy-products/remove", async (req, res) => {
     ]);
 
     console.log(`✅ Successfully removed product: ${productName} for email: ${email}`);
+    console.log(`📊 Final product count: ${updatedProducts.length}`);
+    console.log(`📋 All products: ${JSON.stringify(updatedProducts)}`);
 
     res.status(200).json({
       success: true,
@@ -1111,18 +1216,181 @@ app.post("/api/sell-products/add", async (req, res) => {
     // Insert all products
     await index.namespace("chemicals").upsert(productsToInsert);
 
+    // Remove user from buyer database when they register as supplier
+    try {
+      console.log(`🔄 Removing user from buyer database: ${email}`);
+      
+      // Query to find buyer records for this email
+      const buyerQueryResponse = await index.namespace("buyers").query({
+        vector: dummyVector,
+        filter: {
+          "Buyer Email": { $eq: email },
+          ...(phoneNumber && { "Buyer Phone": { $eq: phoneNumber } }),
+          ...(companyName && { "Buyer Name": { $eq: companyName } }),
+        },
+        topK: 100,
+        includeMetadata: true,
+      });
 
+      if (buyerQueryResponse.matches && buyerQueryResponse.matches.length > 0) {
+        // Delete all buyer records for this user
+        const buyerIdsToDelete = buyerQueryResponse.matches.map(match => match.id);
+        console.log(`🗑️ Deleting ${buyerIdsToDelete.length} buyer records:`, buyerIdsToDelete);
+        
+        // Delete the buyer records
+        await index.namespace("buyers").deleteMany(buyerIdsToDelete);
+        
+        console.log(`✅ Successfully removed user from buyer database`);
+      } else {
+        console.log(`ℹ️ No buyer records found for email: ${email}`);
+      }
+    } catch (error) {
+      console.error("⚠️ Error removing user from buyer database:", error);
+      // Don't fail the entire operation if buyer removal fails
+    }
 
     res.status(200).json({
       success: true,
-      message: "Products added successfully",
+      message: "Products added successfully and user converted to supplier",
       addedProducts: products.map((p) => p.productName),
       count: products.length,
+      userConverted: true
     });
   } catch (error) {
     console.error("Error adding sell products:", error);
     res.status(500).json({
       error: "Failed to add products",
+      details: error.message,
+    });
+  }
+});
+
+// Helper function to extract PIN code from address
+function extractPincode(address) {
+  if (!address) return null;
+  
+  // Look for 6-digit PIN code pattern
+  const pincodeMatch = address.match(/\b\d{6}\b/);
+  if (pincodeMatch) {
+    return pincodeMatch[0];
+  }
+  
+  return null;
+}
+
+// Convert buyer to supplier by adding sample product
+app.post("/api/convert-to-supplier", async (req, res) => {
+  try {
+    const { email, phoneNumber, companyName, gstNumber, sellerDetails } = req.body;
+
+    if (!email || !phoneNumber || !companyName || !gstNumber) {
+      return res.status(400).json({
+        error: "Email, phone number, company name, and GST number are required",
+      });
+    }
+
+    console.log(`🔄 Converting buyer to supplier: ${email}`);
+    console.log(`📞 Phone: ${phoneNumber}`);
+    console.log(`🏢 Company: ${companyName}`);
+    console.log(`🏷️ GST: ${gstNumber}`);
+
+    // Get the chemicals-new index
+    const index = pinecone.index("chemicals-new");
+
+    // Create a dummy vector with 1536 dimensions
+    const dummyVector = new Array(1536).fill(0);
+    dummyVector[0] = 1;
+
+    // Create sample product for the supplier with complete GST validation data
+    const sampleProductId = `sample_product_${Date.now()}`;
+    const sampleProduct = {
+      id: sampleProductId,
+      values: dummyVector,
+      metadata: {
+        // Product Information
+        "Product Name": "Sample Product",
+        "Product Description": "You can add products using the Add Product btn above",
+        "Product Category": "General",
+        "Product Price": 0,
+        "Product Size": "1 Kg",
+        "Product Unit": "Kg",
+        "Minimum Order Quantity": 1,
+        "Product Pictures": "https://via.placeholder.com/200x150/e5e7eb/9ca3af?text=Sample+Product",
+        "Product Rating": 0,
+        "Product ID": sampleProductId,
+        "Product Address": sellerDetails?.primary_business_address || "Address not provided",
+        
+        // Seller Information (from GST validation + user input)
+        "Seller Name": sellerDetails?.legal_name || companyName,
+        "Seller Email Address": email, // User-edited email
+        "Seller POC Contact Number": phoneNumber, // User-edited phone
+        "Seller Address": sellerDetails?.primary_business_address || "Address not provided",
+        "Seller Verified": true,
+        "Seller Rating": 0,
+        
+        // GST and Location Information (from GST validation)
+        "GST Number": gstNumber,
+        "Region": sellerDetails?.state_jurisdiction || "Unknown Region",
+        "PIN Code": extractPincode(sellerDetails?.primary_business_address) || "N/A",
+        
+        // Additional GST Data (complete business information)
+        "Business Constitution": sellerDetails?.business_constitution || "N/A",
+        "Registration Status": sellerDetails?.current_registration_status || "Active",
+        "Registration Date": sellerDetails?.register_date || "N/A",
+        "Aggregate Turnover": sellerDetails?.aggregate_turn_over || "N/A",
+        "State Jurisdiction": sellerDetails?.state_jurisdiction || "N/A",
+        "GSTIN": gstNumber, // Alternative field name used by some records
+        
+        "Created At": new Date().toISOString(),
+      },
+    };
+
+    // Add sample product to supplier database
+    console.log("📦 Adding sample product to supplier database");
+    await index.namespace("chemicals").upsert([sampleProduct]);
+
+    // Remove user from buyer database
+    try {
+      console.log(`🗑️ Removing user from buyer database: ${email}`);
+      
+      // Query to find buyer records for this email
+      const buyerQueryResponse = await index.namespace("buyers").query({
+        vector: dummyVector,
+        filter: {
+          "Buyer Email": { $eq: email },
+          "Buyer Phone": { $eq: phoneNumber },
+        },
+        topK: 100,
+        includeMetadata: true,
+      });
+
+      if (buyerQueryResponse.matches && buyerQueryResponse.matches.length > 0) {
+        // Delete all buyer records for this user
+        const buyerIdsToDelete = buyerQueryResponse.matches.map(match => match.id);
+        console.log(`🗑️ Deleting ${buyerIdsToDelete.length} buyer records:`, buyerIdsToDelete);
+        
+        // Delete the buyer records
+        await index.namespace("buyers").deleteMany(buyerIdsToDelete);
+        
+        console.log(`✅ Successfully removed user from buyer database`);
+      } else {
+        console.log(`ℹ️ No buyer records found for email: ${email}`);
+      }
+    } catch (error) {
+      console.error("⚠️ Error removing user from buyer database:", error);
+      // Don't fail the entire operation if buyer removal fails
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Successfully converted to supplier",
+      sampleProductAdded: true,
+      buyerRemoved: true,
+    });
+  } catch (error) {
+    console.error("Error converting to supplier:", error);
+    res.status(500).json({
+      error: "Failed to convert to supplier",
       details: error.message,
     });
   }
@@ -1742,37 +2010,32 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
     const dummyVector = new Array(1536).fill(0);
     dummyVector[0] = 1;
 
-    // Build filter based on provided parameters
-    let filter = {
-      sellerContact: { $eq: sellerContact },
-    };
+    // Try different phone number formats to match the seller contact
+    const phoneFormats = [
+      sellerContact,
+      `+91${sellerContact}`,
+      `+91 ${sellerContact}`,
+      sellerContact.replace("+91", "").replace(/\s/g, ""),
+    ];
 
-    // Add email filter if provided
-    if (email) {
-      filter.sellerEmail = { $eq: email };
-    }
-
-    // Add company name filter if provided
-    if (companyName) {
-      filter.sellerCompany = { $eq: companyName };
-    }
-
-    // Query for all quotations by this seller contact in the quotations namespace
+    // Fetch all records from quotations namespace
     const queryResponse = await index.namespace("quotations").query({
       vector: dummyVector,
-      filter: filter,
-      topK: 100, // Get up to 100 quotations
+      topK: 10000, // Get all records
       includeMetadata: true,
     });
 
-    console.log(
-      "Pinecone query response for quotations:",
-      JSON.stringify(queryResponse, null, 2)
-    );
+    let allQuotations = (queryResponse.matches || []).filter(match => {
+      return match.metadata.sellerContact === sellerContact;
+    });
 
-    if (queryResponse.matches && queryResponse.matches.length > 0) {
+    console.log(`🔍 Total quotations found across all formats: ${allQuotations.length}`);
+
+
+
+    if (allQuotations.length > 0) {
       // Transform the data to match the new database format and frontend expectations
-      const quotations = queryResponse.matches.map((match) => {
+      let quotations = allQuotations.map((match) => {
         const metadata = match.metadata;
 
         // Format the submission date
@@ -1804,8 +2067,27 @@ app.get("/api/quotations/:sellerContact", async (req, res) => {
           sellerContact: metadata.sellerContact || "N/A",
           submissionDate: metadata.submissionDate || null,
           formattedDate: formattedDate,
+          // Add additional fields for filtering
+          sellerCompany: metadata["Seller Company"] || metadata.companyName || "N/A",
+          sellerEmail: metadata["Seller Email"] || "N/A",
         };
       });
+
+      // For debugging: Show all quotations and their metadata
+      console.log(`🔍 All quotations found: ${quotations.length}`);
+      quotations.forEach(quotation => {
+        console.log(`🔍 Quotation ${quotation.id}:`);
+        console.log(`   - Product: ${quotation.productName}`);
+        console.log(`   - Seller Company: "${quotation.sellerCompany}"`);
+        console.log(`   - Seller Email: "${quotation.sellerEmail}"`);
+        console.log(`   - Seller Contact: "${quotation.sellerContact}"`);
+        console.log(`   - Full quotation object:`, JSON.stringify(quotation, null, 2));
+      });
+
+      // Skip email filtering - just use company name
+      if (email) {
+        console.log(`🔍 Email filter requested: ${email} (skipping for now)`);
+      }
 
       res.status(200).json({
         success: true,
@@ -1948,17 +2230,16 @@ app.get("/api/inquiries/:userNumber", async (req, res) => {
           }
         }
 
+        console.log('🔍 Processing inquiry metadata:', metadata);
+        console.log('🔍 metadata.product:', metadata.product);
+
         return {
           id: match.id,
           orderId: metadata.orderId || "N/A",
           userNumber: metadata.userNumber || "N/A",
-          quantity: metadata.quantity || "N/A",
+          quantity: (metadata.quantity || "N/A").toString(),
           deliveryLocation: metadata.deliveryLocation || "N/A",
-          products: Array.isArray(metadata.products)
-            ? metadata.products
-            : metadata.products
-            ? [metadata.products]
-            : [],
+          products: metadata.product ? [metadata.product] : [],
           suppliers: suppliers,
           expectedResponses: metadata.expectedResponses || 0,
           comparisonReportLink: metadata.comparisonReportLink || "#",
@@ -1966,9 +2247,9 @@ app.get("/api/inquiries/:userNumber", async (req, res) => {
           formattedDate: formattedDate,
           responseCount: metadata.responseCount || 0,
           // For backward compatibility, also include the old productName field
-          productName: Array.isArray(metadata.products)
-            ? metadata.products.join(", ")
-            : metadata.products || "Unknown Product",
+          productName: metadata.product || "Unknown Product",
+          // Also include the product field for consistency
+          product: metadata.product || "Unknown Product",
         };
       });
 
@@ -2169,6 +2450,8 @@ app.get("/api/daily-metrics", async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -4,6 +4,7 @@ import './Profile.css';
 import Popup from '../components/ui/Popup';
 import { useNavigate } from 'react-router-dom';
 import { useCompany } from '../contexts/CompanyContext';
+import { useToast } from '../hooks/use-toast';
 
 const mockProfile = {
   profilePic: 'https://www.gstatic.com/images/branding/product/2x/avatar_square_blue_512dp.png',
@@ -41,6 +42,20 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   
   // Add product modal state
   const [showAddModal, setShowAddModal] = useState(false);
+  
+  // Debug modal state
+  useEffect(() => {
+    console.log('🔍 Modal state changed:', showAddModal);
+  }, [showAddModal]);
+
+  // Clear cache when user changes
+  useEffect(() => {
+    if (user?.email) {
+      console.log('👤 User changed, clearing cache');
+      setBuyProductsCache({});
+      setCacheInitialized(false);
+    }
+  }, [user?.email]);
   const [newProductName, setNewProductName] = useState('');
   const [addingProduct, setAddingProduct] = useState(false);
   const [addProductError, setAddProductError] = useState('');
@@ -84,6 +99,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // History section state
   const [historyTab, setHistoryTab] = useState<'inquiry' | 'quotation'>('inquiry');
 
+  // New seller flow state
+  const [isNewSeller, setIsNewSeller] = useState(false);
+  const [hasAddedProduct, setHasAddedProduct] = useState(false);
+
   // Search state for history sections
   const [inquirySearch, setInquirySearch] = useState('');
   const [quotationSearch, setQuotationSearch] = useState('');
@@ -118,76 +137,72 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   const [masterProductList, setMasterProductList] = useState<string[]>([]);
 
+  // Cache for buy products to avoid unnecessary API calls
+  const [buyProductsCache, setBuyProductsCache] = useState<{[key: string]: string[]}>({});
+  const [cacheInitialized, setCacheInitialized] = useState(false);
+
   // Use company context
   const { selectedCompany, loading: companyLoading } = useCompany();
+  
+  // Use toast for notifications
+  const { toast } = useToast();
 
-  // Fetch master product list
-  useEffect(() => {
-    const fetchMasterProducts = async () => {
-      try {
-        const response = await fetch('/api/approved-chemicals');
-        if (response.ok) {
-          const data = await response.json();
-          setMasterProductList(data.chemicals || []);
-        } else {
-          console.error('Failed to fetch approved chemicals');
-          // Fallback to static list if API fails
-          setMasterProductList([
-            'Acetic Acid', 'Sulfuric Acid', 'Hydrochloric Acid', 'Sodium Hydroxide',
-            'Nitric Acid', 'Phosphoric Acid', 'Citric Acid', 'Oxalic Acid',
-            'Formic Acid', 'Lactic Acid', 'Tartaric Acid', 'Malic Acid',
-            'Potassium Hydroxide', 'Calcium Hydroxide', 'Ammonium Hydroxide',
-            'Sodium Carbonate', 'Potassium Carbonate', 'Calcium Carbonate',
-            'Sodium Bicarbonate', 'Potassium Bicarbonate', 'Ammonium Carbonate',
-            'Sodium Sulfate', 'Potassium Sulfate', 'Calcium Sulfate',
-            'Sodium Chloride', 'Potassium Chloride', 'Calcium Chloride',
-            'Sodium Nitrate', 'Potassium Nitrate', 'Calcium Nitrate',
-            'Sodium Phosphate', 'Potassium Phosphate', 'Calcium Phosphate',
-            'Sodium Acetate', 'Potassium Acetate', 'Calcium Acetate',
-            'Sodium Citrate', 'Potassium Citrate', 'Calcium Citrate',
-            'Sodium Oxalate', 'Potassium Oxalate', 'Calcium Oxalate',
-            'Sodium Formate', 'Potassium Formate', 'Calcium Formate',
-            'Sodium Lactate', 'Potassium Lactate', 'Calcium Lactate',
-            'Sodium Tartrate', 'Potassium Tartrate', 'Calcium Tartrate',
-            'Sodium Malate', 'Potassium Malate', 'Calcium Malate'
-          ]);
-        }
-      } catch (error) {
-        console.error('Error fetching approved chemicals:', error);
-        // Fallback to static list if API fails
-        setMasterProductList([
-          'Acetic Acid', 'Sulfuric Acid', 'Hydrochloric Acid', 'Sodium Hydroxide',
-          'Nitric Acid', 'Phosphoric Acid', 'Citric Acid', 'Oxalic Acid',
-          'Formic Acid', 'Lactic Acid', 'Tartaric Acid', 'Malic Acid',
-          'Potassium Hydroxide', 'Calcium Hydroxide', 'Ammonium Hydroxide',
-          'Sodium Carbonate', 'Potassium Carbonate', 'Calcium Carbonate',
-          'Sodium Bicarbonate', 'Potassium Bicarbonate', 'Ammonium Carbonate',
-          'Sodium Sulfate', 'Potassium Sulfate', 'Calcium Sulfate',
-          'Sodium Chloride', 'Potassium Chloride', 'Calcium Chloride',
-          'Sodium Nitrate', 'Potassium Nitrate', 'Calcium Nitrate',
-          'Sodium Phosphate', 'Potassium Phosphate', 'Calcium Phosphate',
-          'Sodium Acetate', 'Potassium Acetate', 'Calcium Acetate',
-          'Sodium Citrate', 'Potassium Citrate', 'Calcium Citrate',
-          'Sodium Oxalate', 'Potassium Oxalate', 'Calcium Oxalate',
-          'Sodium Formate', 'Potassium Formate', 'Calcium Formate',
-          'Sodium Lactate', 'Potassium Lactate', 'Calcium Lactate',
-          'Sodium Tartrate', 'Potassium Tartrate', 'Calcium Tartrate',
-          'Sodium Malate', 'Potassium Malate', 'Calcium Malate'
-        ]);
-      }
-    };
+  // Generate cache key based on user and company
+  const getCacheKey = () => {
+    if (!user?.email) return null;
+    const baseKey = user.email;
+    if (selectedCompany) {
+      return `${baseKey}_${selectedCompany.contact}_${selectedCompany.name}`;
+    }
+    return baseKey;
+  };
 
-    fetchMasterProducts();
-  }, []);
+  // Get cached products or fetch from API
+  const getBuyProducts = () => {
+    const cacheKey = getCacheKey();
+    if (!cacheKey) return [];
+    
+    if (buyProductsCache[cacheKey]) {
+      return buyProductsCache[cacheKey];
+    }
+    
+    return [];
+  };
+
+  // Update cache with new products
+  const updateBuyProductsCache = (products: string[]) => {
+    const cacheKey = getCacheKey();
+    if (!cacheKey) return;
+    
+    setBuyProductsCache(prev => ({
+      ...prev,
+      [cacheKey]: products
+    }));
+    setBuyProducts(products);
+  };
+
+  // Force refresh cache from backend (for consistency)
+  const forceRefreshCache = async () => {
+    await fetchBuyProducts(true);
+  };
 
   // Helper to normalize product names
   function normalizeName(name: string) {
     return name.trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
-  // Fetch user's buy products from Pinecone
-  const fetchBuyProducts = async () => {
+  // Fetch user's buy products from Pinecone (always fetch fresh data)
+  const fetchBuyProducts = async (forceRefresh = false) => {
     if (!user?.email) return;
+
+    const cacheKey = getCacheKey();
+    if (!cacheKey) return;
+
+    // Only use cache for tab switches, never for initial load or company changes
+    if (!forceRefresh && buyProductsCache[cacheKey] && cacheInitialized) {
+      setBuyProducts(buyProductsCache[cacheKey]);
+      return;
+    }
 
     try {
       setBuyLoading(true);
@@ -205,21 +220,18 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         url += `?${params.toString()}`;
       }
       
-      console.log('🔍 Fetching buy products with URL:', url);
-      
       const response = await fetch(url);
       const data = await response.json();
 
       if (response.ok) {
-        console.log('✅ Buy products fetched successfully:', data.products);
-        setBuyProducts(data.products || []);
+        const products = data.products || [];
+        updateBuyProductsCache(products);
+        setCacheInitialized(true);
       } else {
-        console.error('❌ Error fetching buy products:', data.error);
-        setBuyProducts([]);
+        updateBuyProductsCache([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching buy products:', error);
-      setBuyProducts([]);
+      updateBuyProductsCache([]);
     } finally {
       setBuyLoading(false);
     }
@@ -251,11 +263,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       if (response.ok) {
         setSellProducts(data.suppliers || []);
       } else {
-        console.error('Error fetching sell products:', data.error);
         setSellProducts([]);
       }
     } catch (error) {
-      console.error('Error fetching sell products:', error);
       setSellProducts([]);
     } finally {
       setSellLoading(false);
@@ -290,23 +300,58 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setProfileData(null);
       }
     } catch (error) {
-      console.error('Error fetching profile data:', error);
       setProfileData(null);
     } finally {
       setProfileLoading(false);
     }
   };
 
-  // Fetch quotations from database - now based on selected company
-  const fetchQuotations = async () => {
-    const phoneNumber = selectedCompany?.contact || profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+  // Helper function to get phone number from profile with fallback
+  const getProfilePhoneNumber = () => {
+    // Priority order: selected company contact > profile data > user data > mock
+    let phoneNumber = selectedCompany?.contact;
     
-    console.log('🔍 Fetching quotations with phone number:', phoneNumber);
-    console.log('🎯 Selected company:', selectedCompany);
-    console.log('📋 Profile data:', profileData);
+    if (!phoneNumber && profileData) {
+      phoneNumber = profileData["Seller POC Contact Number"] || profileData["Buyer Phone"];
+    }
     
+    if (!phoneNumber && user?.phoneNumber) {
+      phoneNumber = user.phoneNumber;
+    }
+    
+    if (!phoneNumber && user?.phone) {
+      phoneNumber = user.phone;
+    }
+    
+    // Only use mock phone as absolute last resort
     if (!phoneNumber) {
-      console.log('❌ No phone number available for fetching quotations');
+      phoneNumber = mockProfile.phone;
+    }
+    
+    return phoneNumber;
+  };
+
+  // Helper function to add country code if missing
+  const addCountryCode = (phoneNumber: string) => {
+    if (!phoneNumber) return phoneNumber;
+    
+    // Remove any existing country code
+    let cleanNumber = phoneNumber.replace(/^\+91\s*/, '').replace(/\s/g, '');
+    
+    // Add +91 if it's a 10-digit number
+    if (cleanNumber.length === 10 && /^\d{10}$/.test(cleanNumber)) {
+      return `+91${cleanNumber}`;
+    }
+    
+    // Return as-is if it already has country code or is not a valid 10-digit number
+    return phoneNumber;
+  };
+
+  // Fetch quotations from database with smart phone number handling
+  const fetchQuotations = async () => {
+    const basePhoneNumber = getProfilePhoneNumber();
+    
+    if (!basePhoneNumber || basePhoneNumber === mockProfile.phone) {
       setQuotationData([]);
       return;
     }
@@ -314,50 +359,42 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     try {
       setQuotationLoading(true);
       
-      // Build URL with query parameters if company is selected
+      // Try first with the phone number as-is
+      let phoneNumber = basePhoneNumber;
       let url = `/api/quotations/${encodeURIComponent(phoneNumber)}`;
-      const params = new URLSearchParams();
       
-      if (selectedCompany && user?.email) {
+      // Add email and company name as query parameters for better matching
+      const params = new URLSearchParams();
+      if (user?.email) {
         params.append('email', user.email);
+      }
+      if (selectedCompany?.name) {
         params.append('companyName', selectedCompany.name);
       }
-      
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
       
-      console.log('🌐 Fetching quotations with URL:', url);
-      
-      const response = await fetch(url);
-      const data = await response.json();
-
-      console.log('📡 Quotations API response:', data);
+      let response = await fetch(url);
+      let data = await response.json();
 
       if (response.ok) {
         setQuotationData(data.quotations || []);
       } else {
-        console.error('❌ Error fetching quotations:', data.error);
         setQuotationData([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching quotations:', error);
       setQuotationData([]);
     } finally {
       setQuotationLoading(false);
     }
   };
 
-  // Fetch inquiries from database - now based on selected company
+  // Fetch inquiries from database with smart phone number handling
   const fetchInquiries = async () => {
-    const phoneNumber = selectedCompany?.contact || profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
+    const basePhoneNumber = getProfilePhoneNumber();
     
-    console.log('🔍 Fetching inquiries with phone number:', phoneNumber);
-    console.log('🎯 Selected company:', selectedCompany);
-    console.log('📋 Profile data:', profileData);
-    
-    if (!phoneNumber) {
-      console.log('❌ No phone number available for fetching inquiries');
+    if (!basePhoneNumber || basePhoneNumber === mockProfile.phone) {
       setInquiryData([]);
       return;
     }
@@ -365,34 +402,19 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     try {
       setInquiryLoading(true);
       
-      // Build URL with query parameters if company is selected
+      // Try first with the phone number as-is
+      let phoneNumber = basePhoneNumber;
       let url = `/api/inquiries/${encodeURIComponent(phoneNumber)}`;
-      const params = new URLSearchParams();
       
-      if (selectedCompany && user?.email) {
-        params.append('email', user.email);
-        params.append('companyName', selectedCompany.name);
-      }
-      
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-      
-      console.log('🌐 Fetching inquiries with URL:', url);
-      
-      const response = await fetch(url);
-      const data = await response.json();
+      let response = await fetch(url);
+      let data = await response.json();
 
-      console.log('📡 Inquiries API response:', data);
-
-      if (response.ok) {
+      if (response.ok && data.success) {
         setInquiryData(data.inquiries || []);
       } else {
-        console.error('❌ Error fetching inquiries:', data.error);
         setInquiryData([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching inquiries:', error);
       setInquiryData([]);
     } finally {
       setInquiryLoading(false);
@@ -402,16 +424,16 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Fetch data when component mounts or when selected company changes
   useEffect(() => {
     if (user?.email && !companyLoading) {
-      console.log('🔄 Refreshing data due to user email or company change');
-      console.log('🎯 Selected company:', selectedCompany);
-      
       // Clear data immediately when company changes to prevent showing wrong data
       setBuyProducts([]);
       setSellProducts([]);
       setBuyLoading(true);
       setSellLoading(true);
       
-      fetchBuyProducts();
+      // Always fetch fresh data from backend to ensure consistency
+      // Don't use cache for company changes or initial load
+      fetchBuyProducts(true);
+      
       fetchSellProducts();
       fetchProfileData();
     }
@@ -419,16 +441,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   // Fetch quotations and inquiries when profileData or selected company changes
   useEffect(() => {
-    if ((profileData || selectedCompany) && !companyLoading) {
-      console.log('🔄 Refreshing quotations and inquiries due to profile data or company change');
-      console.log('🎯 Selected company for history:', selectedCompany);
-      
-      // Clear history data immediately when company changes
-      setQuotationData([]);
-      setInquiryData([]);
-      setQuotationLoading(true);
-      setInquiryLoading(true);
-      
+    // Always fetch inquiries when not loading, regardless of profile data
+    if (!companyLoading) {
       fetchQuotations();
       fetchInquiries();
     }
@@ -437,8 +451,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Listen for company change events from the navbar
   useEffect(() => {
     const handleCompanyChange = (event: CustomEvent) => {
-      console.log('📡 Company change event received:', event.detail);
-      // Clear data immediately when company changes to prevent showing wrong data
       if (user?.email && !companyLoading) {
         setBuyProducts([]);
         setSellProducts([]);
@@ -461,15 +473,45 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     };
   }, [user?.email, companyLoading]);
 
-  // Restore active tab from sessionStorage
+  // Check URL parameters and restore active tab from sessionStorage
   useEffect(() => {
-    const savedTab = sessionStorage.getItem('profileActiveTab');
-    if (savedTab && ['buy', 'sell', 'history'].includes(savedTab)) {
-      setTab(savedTab);
-      // Clear the stored tab after restoring
-      sessionStorage.removeItem('profileActiveTab');
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    const newSellerParam = urlParams.get('newSeller');
+    
+    // Check if user is a new seller
+    if (newSellerParam === 'true' || sessionStorage.getItem('newSellerFlag') === 'true') {
+      setIsNewSeller(true);
+      setTab('sell'); // Force sell tab for new sellers
+      // Clear the URL parameters and sessionStorage
+      window.history.replaceState({}, document.title, window.location.pathname);
+      sessionStorage.removeItem('newSellerFlag');
+    } else {
+      // Restore active tab from sessionStorage for regular users
+      const savedTab = sessionStorage.getItem('profileActiveTab');
+      if (savedTab && ['buy', 'sell', 'history'].includes(savedTab)) {
+        setTab(savedTab);
+        // Clear the stored tab after restoring
+        sessionStorage.removeItem('profileActiveTab');
+      }
     }
   }, []);
+
+  // Check if new seller has added products
+  useEffect(() => {
+    if (isNewSeller && sellProducts.length > 0) {
+      // Check if they have added at least one real product (not just the sample)
+      const realProducts = sellProducts.filter(product => 
+        product["Product Name"] && 
+        product["Product Name"] !== "Sample Product"
+      );
+      
+      if (realProducts.length > 0) {
+        setHasAddedProduct(true);
+        setIsNewSeller(false); // No longer a new seller
+      }
+    }
+  }, [isNewSeller, sellProducts]);
 
   // Helper function to check if a date matches the filter
   const matchesDateFilter = (dateString: string, filterDate: string) => {
@@ -556,8 +598,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         requestBody.companyName = selectedCompany.name;
       }
       
-      console.log('🔍 Adding buy product with request body:', requestBody);
-      
       const response = await fetch('/api/buy-products/add', {
         method: 'POST',
         headers: {
@@ -567,7 +607,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       });
       if (response.ok) {
         const data = await response.json();
-        setBuyProducts(data.products);
+        
+        // Update cache with backend response to ensure consistency
+        updateBuyProductsCache(data.products);
         setNewProductName('');
         setAddProductError('');
         setAddProductWarning('');
@@ -581,9 +623,19 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       } else {
         const errorData = await response.json();
         setAddProductError(errorData.error || 'Failed to add product');
+        
+        // Force refresh cache to ensure consistency
+        setTimeout(() => {
+          forceRefreshCache();
+        }, 1000);
       }
     } catch (error) {
       setAddProductError('Failed to add product');
+      
+      // Force refresh cache to ensure consistency
+      setTimeout(() => {
+        forceRefreshCache();
+      }, 1000);
     } finally {
       setAddingProduct(false);
     }
@@ -614,18 +666,18 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        alert(`Product request submitted successfully! Request ID: ${data.requestId}\n\nOur team will review your request and add it to the database if approved.`);
+        toast({
+          title: "Product Request Submitted",
+          description: `Request ID: ${data.requestId}. Our team will review your request and add it to the database if approved.`,
+        });
         setNewProductName('');
         setAddProductError('');
         setAddProductWarning('');
         setShowAddModal(false);
       } else {
-        const errorData = await response.json();
         setAddProductError(errorData.error || 'Failed to submit product request');
       }
     } catch (error) {
-      console.error('Error submitting product request:', error);
       setAddProductError('Failed to submit product request');
     } finally {
       setAddingProduct(false);
@@ -649,8 +701,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         requestBody.companyName = selectedCompany.name;
       }
       
-      console.log('🔍 Removing buy product with request body:', requestBody);
-      
       const response = await fetch('/api/buy-products/remove', {
         method: 'DELETE',
         headers: {
@@ -660,17 +710,40 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setBuyProducts(data.products);
+        // Update cache with backend response to ensure consistency
+        updateBuyProductsCache(data.products);
         setDeleteBuySuccess(true);
         setDeleteBuyError(''); // Always clear error on success
+        
+        // Force refresh to ensure UI is updated immediately
+        setTimeout(() => {
+          forceRefreshCache();
+        }, 500);
       } else {
-        const errorData = await response.json();
-        setDeleteBuyError(errorData.error || 'Failed to remove product');
+        if (errorData.error && (
+          errorData.error.includes('No products found for this email') ||
+          errorData.error.includes('Product not found in your list')
+        )) {
+          // Treat this as success since the product is effectively removed
+          setDeleteBuySuccess(true);
+          setDeleteBuyError('');
+          // Force refresh cache immediately to ensure consistency
+          forceRefreshCache();
+        } else {
+          setDeleteBuyError(errorData.error || 'Failed to remove product');
+          // Force refresh cache to ensure consistency
+          setTimeout(() => {
+            forceRefreshCache();
+          }, 1000);
+        }
       }
     } catch (error) {
-      console.error('Error removing product:', error);
       setDeleteBuyError('Failed to remove product');
+      
+      // Force refresh cache to ensure consistency
+      setTimeout(() => {
+        forceRefreshCache();
+      }, 1000);
     }
   };
 
@@ -711,7 +784,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     );
 
     if (validProducts.length === 0) {
-      alert('Please fill in at least one product');
+      toast({
+        title: "Validation Error",
+        description: "Please fill in at least one product",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -722,7 +799,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     );
 
     if (!isValid) {
-      alert('Please fill in all required fields for the products you want to add');
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields for the products you want to add",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -755,7 +836,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         // Refresh the sell products list
         await fetchSellProducts();
         
-        setSellProductSuccess(`Successfully added ${data.count} product(s)!`);
+        // Special message for new sellers
+        if (isNewSeller) {
+          setSellProductSuccess(`Welcome to Sourceasy! Your first product has been added successfully. You can now access all features!`);
+        } else {
+          setSellProductSuccess(`Successfully added ${data.count} product(s)!`);
+        }
         
         // Reset form
         setSellProductForm([{
@@ -786,7 +872,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         }
       }
     } catch (error) {
-      console.error('Error adding sell products:', error);
       setSellProductError('Failed to add products');
     } finally {
       setAddingSellProduct(false);
@@ -847,7 +932,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setEditProductError(data.error || 'Failed to update product');
       }
     } catch (error) {
-      console.error('Error updating sell product:', error);
       setEditProductError('Failed to update product');
     } finally {
       setUpdatingProduct(false);
@@ -886,11 +970,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setDeleteSellSuccess(true);
         setDeleteSellError(''); // Always clear error on success
       } else {
-        const errorData = await response.json();
         setDeleteSellError(errorData.error || 'Failed to delete product');
       }
     } catch (error) {
-      console.error('Error deleting sell product:', error);
       setDeleteSellError('Failed to delete product');
     } finally {
       setDeletingSellProduct(null);
@@ -972,7 +1054,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setPincodeError(data.error || 'Failed to update pincode');
       }
     } catch (error) {
-      console.error('Error updating pincode:', error);
       setPincodeError('Failed to update pincode. Please try again.');
     } finally {
       setUpdatingPincode(false);
@@ -1078,12 +1159,110 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       {/* Main Content */}
       <main className="profile-main">
+        {/* New Seller Blocking Overlay */}
+        {isNewSeller && !hasAddedProduct && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '40px',
+              borderRadius: '12px',
+              maxWidth: '500px',
+              textAlign: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+            }}>
+              <h2 style={{ 
+                color: '#1f2937', 
+                marginBottom: '16px',
+                fontSize: '24px',
+                fontWeight: '600'
+              }}>
+                Welcome to Sourceasy! 🎉
+              </h2>
+              <p style={{ 
+                color: '#6b7280', 
+                marginBottom: '24px',
+                fontSize: '16px',
+                lineHeight: '1.6'
+              }}>
+                You've successfully registered as a supplier. To get started, please add at least one product to your catalog.
+              </p>
+              <div style={{
+                backgroundColor: '#f3f4f6',
+                padding: '16px',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                textAlign: 'left'
+              }}>
+                <p style={{ 
+                  color: '#374151', 
+                  margin: '0 0 8px 0',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  📋 What you need to do:
+                </p>
+                <ul style={{ 
+                  color: '#6b7280', 
+                  margin: '0',
+                  paddingLeft: '20px',
+                  fontSize: '14px'
+                }}>
+                  <li>Click "Add Product" button above</li>
+                  <li>Fill in your product details</li>
+                  <li>Submit your first product</li>
+                </ul>
+              </div>
+              <button
+                onClick={() => {
+                  setTab('sell');
+                  setShowAddSellModal(true);
+                }}
+                style={{
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+              >
+                Add Your First Product
+              </button>
+            </div>
+          </div>
+        )}
         <div className="profile-tabs">
           {TABS.map((t) => (
             <button
               key={t.id}
               className={`tab-btn ${tab === t.id ? 'active' : ''}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                // Prevent tab switching for new sellers who haven't added products
+                if (isNewSeller && !hasAddedProduct && t.id !== 'sell') {
+                  return;
+                }
+                setTab(t.id);
+              }}
+              style={{
+                opacity: isNewSeller && !hasAddedProduct && t.id !== 'sell' ? 0.5 : 1,
+                cursor: isNewSeller && !hasAddedProduct && t.id !== 'sell' ? 'not-allowed' : 'pointer'
+              }}
             >
               <t.icon className="tab-icon" />
               {t.label}
@@ -1109,6 +1288,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                     setShowAddModal(true);
                     setAddProductError('');
                     setAddProductWarning('');
+                    console.log('🔘 Modal state set to true');
                   }}
                   style={{
                     display: 'flex',
@@ -1212,7 +1392,23 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 </button>
               </div>
               
-              <h2 className="section-title">Products You Sell</h2>
+              <h2 className="section-title">
+                Products You Sell
+                {isNewSeller && !hasAddedProduct && (
+                  <span style={{
+                    backgroundColor: '#fef3c7',
+                    color: '#92400e',
+                    padding: '4px 12px',
+                    borderRadius: '16px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    marginLeft: '12px',
+                    display: 'inline-block'
+                  }}>
+                    New Seller
+                  </span>
+                )}
+              </h2>
               
               {companyLoading || sellLoading ? (
                 <div className="loading-state">
@@ -1556,10 +1752,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         <div style={{
                           fontSize: '14px',
                           color: '#9ca3af'
-                        }}>
+                        }}                        >
                           {(() => {
-                            const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
-                            return phoneNumber ? 
+                            const phoneNumber = getProfilePhoneNumber();
+                            return phoneNumber && phoneNumber !== mockProfile.phone ? 
                               `No inquiries found for phone number: ${phoneNumber}` : 
                               'Phone number not available to fetch inquiries';
                           })()}
@@ -1575,9 +1771,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       {inquiryData
                         .filter(inquiry => {
                           const searchTerm = inquirySearch.toLowerCase();
-                          const productNames = Array.isArray(inquiry.products) 
-                            ? inquiry.products.join(' ').toLowerCase()
-                            : inquiry.productName.toLowerCase();
+                          const productNames = (inquiry.product || inquiry.productName || '').toLowerCase();
                           const matchesSearch = productNames.includes(searchTerm) ||
                             inquiry.deliveryLocation.toLowerCase().includes(searchTerm) ||
                             inquiry.quantity.toLowerCase().includes(searchTerm) ||
@@ -1609,9 +1803,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                 color: '#1f2937',
                                 margin: '0 0 4px 0'
                               }}>
-                                {Array.isArray(inquiry.products) 
-                                  ? inquiry.products.join(', ')
-                                  : inquiry.productName}
+                                {inquiry.product || inquiry.productName || 'Unknown Product'}
                               </h3>
                               {inquiry.formattedDate && (
                                 <div style={{
@@ -1750,10 +1942,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         <div style={{
                           fontSize: '14px',
                           color: '#9ca3af'
-                        }}>
+                        }}                        >
                           {(() => {
-                            const phoneNumber = profileData?.["Seller POC Contact Number"] || user?.phone || mockProfile.phone;
-                            return phoneNumber ? 
+                            const phoneNumber = getProfilePhoneNumber();
+                            return phoneNumber && phoneNumber !== mockProfile.phone ? 
                               `No quotations found for phone number: ${phoneNumber}` : 
                               'Phone number not available to fetch quotations';
                           })()}
@@ -1989,10 +2181,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                   if (addProductSuccess) setAddProductSuccess('');
                   
                   // Check for duplicates in real-time (normalized)
-                  const trimmedValue = value.trim();
-                  const normalizedNew = normalizeName(trimmedValue);
+                  const trimmedProductName = value.trim();
+                  const normalizedNew = normalizeName(trimmedProductName);
                   if (
-                    trimmedValue &&
+                    trimmedProductName &&
                     buyProducts.some(existingProduct => normalizeName(existingProduct) === normalizedNew)
                   ) {
                     setAddProductWarning("This product already exists in your list");
