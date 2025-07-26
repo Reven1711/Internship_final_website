@@ -488,11 +488,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       sessionStorage.removeItem('newSellerFlag');
     } else {
       // Restore active tab from sessionStorage for regular users
-      const savedTab = sessionStorage.getItem('profileActiveTab');
-      if (savedTab && ['buy', 'sell', 'history'].includes(savedTab)) {
-        setTab(savedTab);
-        // Clear the stored tab after restoring
-        sessionStorage.removeItem('profileActiveTab');
+    const savedTab = sessionStorage.getItem('profileActiveTab');
+    if (savedTab && ['buy', 'sell', 'history'].includes(savedTab)) {
+      setTab(savedTab);
+      // Clear the stored tab after restoring
+      sessionStorage.removeItem('profileActiveTab');
       }
     }
   }, []);
@@ -730,11 +730,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           // Force refresh cache immediately to ensure consistency
           forceRefreshCache();
         } else {
-          setDeleteBuyError(errorData.error || 'Failed to remove product');
-          // Force refresh cache to ensure consistency
-          setTimeout(() => {
-            forceRefreshCache();
-          }, 1000);
+        setDeleteBuyError(errorData.error || 'Failed to remove product');
+        // Force refresh cache to ensure consistency
+        setTimeout(() => {
+          forceRefreshCache();
+        }, 1000);
         }
       }
     } catch (error) {
@@ -840,7 +840,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         if (isNewSeller) {
           setSellProductSuccess(`Welcome to Sourceasy! Your first product has been added successfully. You can now access all features!`);
         } else {
-          setSellProductSuccess(`Successfully added ${data.count} product(s)!`);
+        setSellProductSuccess(`Successfully added ${data.count} product(s)!`);
         }
         
         // Reset form

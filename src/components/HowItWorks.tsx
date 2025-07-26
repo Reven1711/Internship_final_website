@@ -12,6 +12,7 @@ const HowItWorks = () => {
   const timelineRef = useRef(null);
   const intervalRef = useRef(null);
   const inputRef = useRef(null);
+  const chatMessagesRef = useRef(null);
 
   const steps = [
     {
@@ -44,6 +45,12 @@ const HowItWorks = () => {
       message: "Your comparison report is ready! 📄\nTap to view the detailed PDF with supplier quotes, delivery terms, and payment options.",
       interval: 2000,
     },
+    {
+      title: "Negotiate Prices",
+      description: "Negotiate product prices with our AI powered negotiation",
+      message: "Do you want to negotiate the price with the seller?",
+      interval: 2000,
+    }
   ];
 
   useEffect(() => {
@@ -86,9 +93,9 @@ const HowItWorks = () => {
     });
 
     function startMessageAnimation() {
-      // First show all messages in sequence
-      steps.forEach((step, index) => {
-        const message = messagesRef.current[index];
+      // First show messages 0-3 in sequence
+      for (let i = 0; i < 4; i++) {
+        const message = messagesRef.current[i];
         if (message) {
           timelineRef.current
             .to(message, {
@@ -98,15 +105,68 @@ const HowItWorks = () => {
               duration: 0.5,
               ease: "back.out(1.7)",
               onStart: () => {
-                setActiveStep(index);
-                if (index === 4) {
-                  setShowPdf(true);
-                }
+                setActiveStep(i);
+                scrollToBottom();
               }
             })
-            .to({}, { duration: 2 }); // Add 2 second delay after each message
+            .to({}, { duration: steps[i].interval / 1000 });
         }
-      });
+      }
+
+      // Show comparison report message (step 4)
+      const comparisonMessage = messagesRef.current[4];
+      if (comparisonMessage) {
+        timelineRef.current
+          .to(comparisonMessage, {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.5,
+            ease: "back.out(1.7)",
+            onStart: () => {
+              setActiveStep(4);
+              setShowPdf(true);
+              scrollToBottom();
+            }
+          })
+          .to({}, { duration: steps[4].interval / 1000 });
+      }
+
+      // Show PDF after comparison report message
+      const pdfElement = messagesRef.current[4.5];
+      if (pdfElement) {
+        timelineRef.current
+          .to(pdfElement, {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.5,
+            ease: "back.out(1.7)",
+            delay: 0.5, // Small delay after comparison message
+            onStart: () => {
+              scrollToBottom();
+            }
+          })
+          .to({}, { duration: 1 }); // Wait a bit for PDF to be visible
+      }
+
+      // Show negotiation message (step 5) after PDF
+      const negotiationMessage = messagesRef.current[5];
+      if (negotiationMessage) {
+        timelineRef.current
+          .to(negotiationMessage, {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.5,
+            ease: "back.out(1.7)",
+            onStart: () => {
+              setActiveStep(5);
+              scrollToBottom();
+            }
+          })
+          .to({}, { duration: steps[5].interval / 1000 });
+      }
 
       // After all messages are shown, wait for a moment
       timelineRef.current.to({}, { duration: 1.5 });
@@ -148,9 +208,9 @@ const HowItWorks = () => {
     messagesRef.current.forEach((message, i) => {
       if (message) {
         gsap.to(message, {
-          opacity: i === index ? 1 : 0,
-          y: i === index ? 0 : 20,
-          scale: i === index ? 1 : 0.9,
+          opacity: i === index || (index === 4 && i === 4.5) || (index === 5 && i === 4.5) ? 1 : 0,
+          y: i === index || (index === 4 && i === 4.5) || (index === 5 && i === 4.5) ? 0 : 20,
+          scale: i === index || (index === 4 && i === 4.5) || (index === 5 && i === 4.5) ? 1 : 0.9,
           duration: 0.3,
           ease: "power2.out"
         });
@@ -158,7 +218,7 @@ const HowItWorks = () => {
     });
 
     setActiveStep(index);
-    setShowPdf(index === 4);
+    setShowPdf(index === 4 || index === 5);
 
     // Resume timeline after 3 seconds
     setTimeout(() => {
@@ -184,6 +244,12 @@ const HowItWorks = () => {
     });
   };
 
+  const scrollToBottom = () => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  };
+
   return (
     <section className="how-it-works" ref={containerRef}>
       <div className="how-it-works-container">
@@ -205,8 +271,8 @@ const HowItWorks = () => {
                     <span className="chat-status" />
                   </div>
                 </div>
-                <div className="chat-messages">
-                  {steps.map((step, index) => (
+                <div className="chat-messages" ref={chatMessagesRef}>
+                  {steps.slice(0, 4).map((step, index) => (
                     <div
                       key={index}
                       ref={(el) => (messagesRef.current[index] = el)}
@@ -218,8 +284,24 @@ const HowItWorks = () => {
                       </div>
                     </div>
                   ))}
+                  
+                  {/* Comparison Report Message */}
+                  <div
+                    ref={(el) => (messagesRef.current[4] = el)}
+                    className="message-bubble received"
+                  >
+                    <div className="message-text">{steps[4].message}</div>
+                    <div className="message-time">
+                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                  
+                  {/* PDF appears after comparison report message */}
                   {showPdf && (
-                    <div className="pdf-preview">
+                    <div 
+                      ref={(el) => (messagesRef.current[4.5] = el)}
+                      className="pdf-preview"
+                    >
                       <div className="pdf-icon">
                         <FileText />
                       </div>
@@ -229,6 +311,17 @@ const HowItWorks = () => {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Negotiation Message appears after PDF */}
+                  <div
+                    ref={(el) => (messagesRef.current[5] = el)}
+                    className="message-bubble sent"
+                  >
+                    <div className="message-text">{steps[5].message}</div>
+                    <div className="message-time">
+                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="chat-input-container" ref={inputRef}>
@@ -268,6 +361,7 @@ const HowItWorks = () => {
                   {index === 2 && <CheckCircle2 />}
                   {index === 3 && <Truck />}
                   {index === 4 && <Package />}
+                  {index === 5 && <IndianRupee />}
                 </div>
                 <div className="step-content">
                   <h3 className="step-title">{step.title}</h3>
