@@ -46,7 +46,7 @@ const HowItWorks = () => {
       interval: 2000,
     },
     {
-      title: "Negotiate Prices",
+      title: "Negotiate Prices & Close Deal",
       description: "Negotiate product prices with our AI powered negotiation",
       message: "Do you want to negotiate the price with the seller?",
       interval: 2000,
